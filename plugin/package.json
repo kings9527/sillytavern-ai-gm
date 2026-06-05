@@ -1,0 +1,17 @@
+{
+  "name": "sillytavern-ai-gm-plugin",
+  "version": "0.1.0",
+  "description": "AI-GM backend plugin for SillyTavern",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Tests not yet implemented\""
+  },
+  "dependencies": {
+    "dice-roller": "^5.0.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "keywords": ["sillytavern", "plugin", "ttrpg", "ai", "gm"],
+  "license": "AGPL-3.0",
+  "author": "kings9527"
+}

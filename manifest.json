@@ -1,0 +1,12 @@
+{
+  "name": "AI-GM",
+  "version": "0.1.0",
+  "description": "AI-powered Game Master for SillyTavern - Automated TTRPG hosting",
+  "author": "kings9527",
+  "license": "AGPL-3.0",
+  "homepage": "https://github.com/kings9527/sillytavern-ai-gm",
+  "requires": ["1.18.0"],
+  "entry": "index.js",
+  "css": "style.css",
+  "icon": "icon.png"
+}
