@@ -345,14 +345,110 @@
 /* Save Dialog */
 .ai-gm-save-dialog {
     padding: 10px;
-    min-width: 200px;
+    min-width: 280px;
 }
 
-.ai-gm-save-buttons {
+.ai-gm-save-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.ai-gm-save-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ai-gm-save-slot:hover {
+    border-color: var(--SmartThemeAccentColor);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ai-gm-save-slot.selected {
+    border-color: var(--SmartThemeAccentColor);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-gm-save-slot.empty {
+    opacity: 0.5;
+}
+
+.ai-gm-save-slot.active {
+    opacity: 1;
+}
+
+.ai-gm-slot-number {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--SmartThemeDarkColor);
+    border-radius: 50%;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.ai-gm-slot-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ai-gm-slot-label {
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.ai-gm-slot-meta {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.ai-gm-slot-time {
+    font-size: 0.7em;
+    opacity: 0.5;
+}
+
+.ai-gm-slot-empty {
+    font-size: 0.85em;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.ai-gm-save-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     margin-bottom: 10px;
+}
+
+/* Combat Log */
+.ai-gm-combat-log {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 8px;
+    padding: 6px;
+    background: var(--SmartThemeDarkColor);
+    border-radius: 6px;
+    font-size: 0.8em;
+}
+
+.ai-gm-log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ai-gm-log-entry:last-child {
+    border-bottom: none;
 }
 
 /* Debug */

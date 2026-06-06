@@ -443,7 +443,7 @@ function showDiceRoller() {
 }
 
 /**
- * Show save/load dialog
+ * Show save/load dialog with multiple slots
  */
 function showSaveDialog() {
     if (!gmState.campaignId) {
@@ -453,9 +453,10 @@ function showSaveDialog() {
 
     const html = `
         <div class="ai-gm-save-dialog">
-            <div class="ai-gm-save-buttons">
-                <button class="menu_button" id="ai-gm-save-btn-action">💾 保存</button>
-                <button class="menu_button" id="ai-gm-load-btn-action">📂 读取</button>
+            <div class="ai-gm-save-slots" id="ai-gm-save-slots"></div>
+            <div class="ai-gm-save-actions">
+                <button class="menu_button" id="ai-gm-save-btn-action">💾 保存到选中槽位</button>
+                <button class="menu_button" id="ai-gm-load-btn-action">📂 读取选中槽位</button>
             </div>
             <div id="ai-gm-save-status"></div>
         </div>
@@ -466,18 +467,42 @@ function showSaveDialog() {
     popup.innerHTML = html;
     document.body.appendChild(popup);
 
+    // Load existing saves
+    loadSaveSlots(popup);
+
+    let selectedSlot = 1;
+
     popup.querySelector('#ai-gm-save-btn-action').addEventListener('click', async () => {
         try {
             const result = await gmApi('/save', 'POST', {
                 campaign_id: gmState.campaignId,
-                slot: 1,
-                label: '手动存档'
+                slot: selectedSlot,
+                label: `存档 ${selectedSlot} - ${gmState.module?.scenes?.[gmState.campaign?.current_scene]?.title || '未知场景'}`
             });
             if (result.success) {
-                popup.querySelector('#ai-gm-save-status').textContent = '存档成功';
+                popup.querySelector('#ai-gm-save-status').textContent = `✅ 存档成功 (槽位 ${selectedSlot})`;
+                loadSaveSlots(popup);
             }
         } catch (e) {
-            popup.querySelector('#ai-gm-save-status').textContent = '存档失败: ' + e.message;
+            popup.querySelector('#ai-gm-save-status').textContent = '❌ 存档失败: ' + e.message;
+        }
+    });
+
+    popup.querySelector('#ai-gm-load-btn-action').addEventListener('click', async () => {
+        try {
+            const result = await gmApi('/load', 'POST', {
+                campaign_id: gmState.campaignId,
+                slot: selectedSlot
+            });
+            if (result.success) {
+                popup.querySelector('#ai-gm-save-status').textContent = `✅ 读取成功 (槽位 ${selectedSlot})`;
+                gmState.campaign = result.campaign;
+                updateCampaignUI(result.campaign);
+                updateSceneUI(gmState.module, result.campaign.current_scene);
+                updatePlayerUI(result.campaign.player);
+            }
+        } catch (e) {
+            popup.querySelector('#ai-gm-save-status').textContent = '❌ 读取失败: ' + e.message;
         }
     });
 
@@ -490,6 +515,57 @@ function showSaveDialog() {
         };
         document.addEventListener('click', closeHandler);
     }, 100);
+}
+
+/**
+ * Load and display save slots
+ * @param {HTMLElement} popup - Save dialog popup element
+ */
+async function loadSaveSlots(popup) {
+    try {
+        const result = await gmApi('/save/list', 'POST', {
+            campaign_id: gmState.campaignId
+        });
+
+        const slotsContainer = popup.querySelector('#ai-gm-save-slots');
+        if (!slotsContainer) return;
+
+        const saves = result.saves || [];
+        const saveMap = new Map(saves.map(s => [s.slot, s]));
+
+        slotsContainer.innerHTML = Array.from({ length: 5 }, (_, i) => {
+            const slot = i + 1;
+            const save = saveMap.get(slot);
+            const isActive = save ? 'active' : 'empty';
+            const content = save
+                ? `
+                    <div class="ai-gm-slot-info">
+                        <div class="ai-gm-slot-label">${save.label}</div>
+                        <div class="ai-gm-slot-meta">场景: ${save.scene_id} | 回合: ${save.turn_count}</div>
+                        <div class="ai-gm-slot-time">${new Date(save.saved_at).toLocaleString('zh-CN')}</div>
+                    </div>
+                `
+                : `<div class="ai-gm-slot-empty">空槽位</div>`;
+
+            return `
+                <div class="ai-gm-save-slot ${isActive}" data-slot="${slot}">
+                    <div class="ai-gm-slot-number">${slot}</div>
+                    ${content}
+                </div>
+            `;
+        }).join('');
+
+        // Bind slot selection
+        slotsContainer.querySelectorAll('.ai-gm-save-slot').forEach(slotEl => {
+            slotEl.addEventListener('click', () => {
+                slotsContainer.querySelectorAll('.ai-gm-save-slot').forEach(el => el.classList.remove('selected'));
+                slotEl.classList.add('selected');
+                selectedSlot = parseInt(slotEl.dataset.slot);
+            });
+        });
+    } catch (e) {
+        console.error('[AI-GM] Failed to load save slots:', e);
+    }
 }
 
 /**
@@ -644,12 +720,44 @@ function updatePlayerUI(player) {
 }
 
 /**
- * Update combat UI
+ * Update combat UI with player HP sync
+ * @param {object} result - Combat action result
  */
 function updateCombatUI(result) {
     const combatPanel = document.getElementById('ai-gm-combat-panel');
     combatPanel.style.display = 'block';
     
+    // Sync player HP from combat result
+    if (result.player) {
+        gmState.campaign.player = result.player;
+        updatePlayerUI(result.player);
+    }
+    
+    // Update combat summary
+    const summary = result.combat_summary;
+    if (summary) {
+        document.getElementById('ai-gm-combat-round').textContent = `回合: ${summary.round}`;
+        document.getElementById('ai-gm-combat-turn').textContent = `当前行动: ${summary.current_turn_name || summary.current_turn}`;
+        
+        const initiativeList = document.getElementById('ai-gm-combat-initiative');
+        initiativeList.innerHTML = summary.enemies.map(e => 
+            `<div class="ai-gm-initiative-entry ${e.id === summary.current_turn ? 'active' : ''}">
+                ${e.name}: HP ${e.hp}/${e.max_hp}
+            </div>`
+        ).join('');
+        
+        // Add combat log
+        if (summary.log) {
+            const logDiv = document.createElement('div');
+            logDiv.className = 'ai-gm-combat-log';
+            logDiv.innerHTML = summary.log.map(l => `<div class="ai-gm-log-entry">${l}</div>`).join('');
+            combatPanel.appendChild(logDiv);
+        }
+        
+        return;
+    }
+    
+    // Fallback for legacy format
     document.getElementById('ai-gm-combat-round').textContent = `回合: ${result.round}`;
     document.getElementById('ai-gm-combat-turn').textContent = `当前行动: ${result.current_turn}`;
     

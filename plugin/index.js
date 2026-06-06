@@ -284,7 +284,18 @@ router.post('/combat/init', asyncHandler(async (req, res) => {
     const result = combat.initCombat(enemies);
     campaign.combat_state = combat.getState();
 
-    res.json({ success: true, ...result });
+    // Log combat start
+    campaign.session_log.push({
+        timestamp: new Date().toISOString(),
+        type: 'combat',
+        actor: campaign.player.name,
+        content: `Combat started with ${enemies.length} enemies`,
+        metadata: { enemies, round: 1 }
+    });
+
+    campaign.updated_at = new Date().toISOString();
+
+    res.json({ success: true, ...result, combat_summary: combat.getCombatSummary() });
 }));
 
 /**
@@ -300,10 +311,26 @@ router.post('/combat/action', asyncHandler(async (req, res) => {
 
     const combat = new CombatTracker(campaign);
     combat.loadState(campaign.combat_state);
-    const result = combat.processAction(actor, action, target, params);
+    const result = combat.processAction(actor, action, target || 'player_1', params);
     campaign.combat_state = combat.getState();
 
-    res.json({ success: true, ...result });
+    // Log combat action
+    campaign.session_log.push({
+        timestamp: new Date().toISOString(),
+        type: 'combat',
+        actor: campaign.player.name,
+        content: `${action} action: ${result.log}`,
+        metadata: { action, damage: result.damage, hit: result.hit }
+    });
+
+    campaign.updated_at = new Date().toISOString();
+
+    res.json({ 
+        success: true, 
+        ...result, 
+        combat_summary: combat.getCombatSummary(),
+        player: campaign.player  // Include updated player HP for frontend sync
+    });
 }));
 
 /**
@@ -362,53 +389,67 @@ router.post('/rules/check', (req, res) => {
 /**
  * Save campaign
  */
-router.post('/save', (req, res) => {
-    try {
-        const { campaign_id, slot = 1, label = 'Manual Save' } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const saveData = {
-            ...campaign,
-            saved_at: new Date().toISOString(),
-            slot,
-            label
-        };
-        
-        // TODO: Persist to SQLite in Phase 2
-        // For MVP, in-memory only
-        campaign.saves = campaign.saves || {};
-        campaign.saves[slot] = saveData;
-        
-        res.json({ success: true, slot, label });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/save', asyncHandler(async (req, res) => {
+    const { campaign_id, slot = 1, label = '手动存档' } = req.body;
+    const campaign = campaigns.get(campaign_id);
+    
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+    
+    const storage = new CampaignStorage();
+    const result = storage.saveSnapshot(campaign_id, slot, label, campaign);
+    
+    campaign.session_log.push({
+        timestamp: new Date().toISOString(),
+        type: 'save',
+        actor: campaign.player.name,
+        content: `Saved to slot ${slot}: ${label}`,
+        metadata: { slot, label }
+    });
+    
+    res.json({ success: true, ...result });
+}));
 
 /**
  * Load campaign
  */
-router.post('/load', (req, res) => {
-    try {
-        const { campaign_id, slot = 1 } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign || !campaign.saves || !campaign.saves[slot]) {
-            return res.status(404).json({ success: false, error: 'Save not found' });
-        }
-        
-        const saveData = campaign.saves[slot];
-        campaigns.set(campaign_id, saveData);
-        
-        res.json({ success: true, campaign: saveData });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/load', asyncHandler(async (req, res) => {
+    const { campaign_id, slot = 1 } = req.body;
+    const campaign = campaigns.get(campaign_id);
+    
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+    
+    const storage = new CampaignStorage();
+    const saveData = storage.loadSnapshot(campaign_id, slot);
+    
+    if (!saveData) {
+        return res.status(404).json({ success: false, error: 'Save not found' });
+    }
+    
+    campaigns.set(campaign_id, saveData);
+    
+    res.json({ success: true, campaign: saveData });
+}));
+
+/**
+ * List saves for a campaign
+ */
+router.post('/save/list', asyncHandler(async (req, res) => {
+    const { campaign_id } = req.body;
+    const campaign = campaigns.get(campaign_id);
+    
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+    
+    const storage = new CampaignStorage();
+    const saves = storage.getSnapshots(campaign_id);
+    
+    res.json({ success: true, saves });
+}));
 
 /**
  * NPC decision endpoint

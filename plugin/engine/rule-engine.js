@@ -92,10 +92,50 @@ export class RuleEngine {
         };
     }
 
-    calculateDamage(stats, weapon) {
-        // TODO: Implement damage calculation based on system rules
-        return { damage: 0, formula: 'not_implemented' };
+
+    /**
+     * Calculate damage bonus (DB) based on STR+SIZ for CoC
+     * @param {object} stats - Entity stats
+     * @returns {object} DB result with total and formula
+     */
+    calculateDamageBonus(stats) {
+        if (!stats) return { total: 0, formula: '' };
+        
+        const str = stats.STR || 50;
+        const siz = stats.SIZ || 50;
+        const sum = str + siz;
+        
+        // CoC 7e DB table
+        if (sum <= 64) return { total: -2, formula: 'DB: -2 (STR+SIZ ≤ 64)' };
+        if (sum <= 84) return { total: -1, formula: 'DB: -1 (STR+SIZ 65-84)' };
+        if (sum <= 124) return { total: 0, formula: 'DB: 0 (STR+SIZ 85-124)' };
+        if (sum <= 164) {
+            const roll = Math.floor(Math.random() * 4) + 1;
+            return { total: roll, formula: `DB: +1d4=${roll} (STR+SIZ 125-164)` };
+        }
+        if (sum <= 204) {
+            const roll = Math.floor(Math.random() * 6) + 1;
+            return { total: roll, formula: `DB: +1d6=${roll} (STR+SIZ 165-204)` };
+        }
+        const roll = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);
+        return { total: roll, formula: `DB: +2d6=${roll} (STR+SIZ ≥ 205)` };
     }
+
+    /**
+     * Get maximum possible roll for a dice expression (for critical hits)
+     * @param {string} expression - Dice expression
+     * @returns {number} Max roll value
+     */
+    getMaxDiceRoll(expression) {
+        if (typeof expression === 'number') return expression;
+        const match = expression.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/);
+        if (!match) return 0;
+        const count = parseInt(match[1]);
+        const sides = parseInt(match[2]);
+        const mod = match[4] ? (match[3] === '+' ? 1 : -1) * parseInt(match[4]) : 0;
+        return count * sides + mod;
+    }
+
 
     calculateSanityLoss(amount, currentSanity) {
         const loss = this.parseDiceExpression(amount);
