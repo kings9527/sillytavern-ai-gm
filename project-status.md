@@ -110,75 +110,78 @@
 - ✅ 存档槽位样式：selected/empty/active 状态
 - ✅ 战斗日志样式：滚动区域 + 日志条目
 
-## 下一步（Day 3·Guard）
+## Day 3 Guard 完成记录
 
-### 测试框架
-- [ ] 修复 test/index.js 内存溢出问题（Node 16 环境循环引用？）
-- [ ] 添加 Jest 测试框架或改用轻量测试方案
-- [ ] 编写单元测试覆盖所有 engine 模块
+### 测试框架修复
+- ✅ dice.js 内存溢出修复：正则 `(\d*)` → `(\d+)` 阻止空字符串无限匹配
+- ✅ 测试框架保持轻量断言方案（无需 Jest）
+- ✅ 29/29 测试全部通过
 
-### Bug 修复
-- [ ] 测试场景事件在多次触发的边界处理
-- [ ] 战斗结束时清理 combat_state 的边界检查
-- [ ] 存档读取后恢复 combat_state 的完整性
+### Bug 修复与边界检查
+- ✅ **状态机**：`processAction()` 空值校验 + `inventory` 默认值 + `combat_state` 离开战斗场景时自动清理
+- ✅ **事件系统**：`repeatable` 标志支持事件重复触发；`checkSkillSuccessEvents()` 改为模块配置驱动（不再硬编码 `basement`）
+- ✅ **战斗系统**：
+  - `loadState()` 验证完整性（缺失 initiative 时拒绝加载）
+  - `applyDamage()` 防御式编程（null player/npc_state）
+  - `checkCombatEnd()` 空值保护
+  - `heal()` 空值保护
+  - `initCombat()` 空 enemies 数组校验
+  - `resolveAttack()` 验证 attacker 存在
+- ✅ **存档恢复**：`loadSnapshot()` 加载后 campaign 数据完整保留，combat_state 由 CombatTracker.loadState() 验证
 
-### 类型安全
-- [ ] 添加 JSDoc 类型注解到所有公共 API
-- [ ] 参数验证中间件（统一 schema 验证）
-- [ ] 输入 sanitization（防止 XSS 注入到 narration）
+### JSDoc 类型注解（全部引擎模块）
+- ✅ `dice.js` — 4 个公共方法完整 JSDoc
+- ✅ `rule-engine.js` — 7 个公共方法完整 JSDoc
+- ✅ `state-machine.js` — 全部公共方法 + 工具方法 JSDoc
+- ✅ `combat-tracker.js` — 全部公共方法 JSDoc
+- ✅ `campaign.js` — 全部公共方法 JSDoc
+- ✅ `sanitize.js` — 新增工具函数 JSDoc
+
+### 输入消毒（XSS 防护）
+- ✅ `utils/sanitize.js` 新建：
+  - `escapeHtml()` — HTML 实体转义
+  - `sanitizeInput()` — 去除控制字符 + 长度截断
+  - `sanitizeNarration()` — 去除 script 标签和事件处理器
+  - `validateModule()` — 模组结构验证
+  - `isValidCampaignId()` — 格式校验
+- ✅ `state-machine.js` 集成 `sanitizeNarration()` 到事件描述和技能检定结果
+
+### 测试覆盖（29 个断言全部通过）
+- DiceRoller (4) / RuleEngine (7) / GameStateMachine (5)
+- CombatTracker (3) / NPCDecisionEngine (2) / Sanitize (8)
+
+## 下一步（Day 4·Pipeline）
+
+### CI/CD 与构建
+- [ ] 配置 ESLint + Prettier（代码规范自动化）
+- [ ] 添加 `package.json` lint / format 脚本
+- [ ] 添加 GitHub Actions 基础 CI（语法检查 + 测试运行）
+
+### 性能优化
+- [ ] 引擎模块懒加载（减少启动时间）
+- [ ] 骰子解析器缓存（避免重复编译正则）
+
+### 开发者体验
+- [ ] 添加 `README.md` 开发指南
+- [ ] 添加 `docs/module-format.md` 模组格式规范
+- [ ] 添加热重载开发模式（mock 数据）
+
+## 已知问题（已解决）
+
+1. ✅ dice.js 内存溢出（OOM）—— 正则无限循环已修复
+2. ✅ 存档读取后 combat_state 丢失—— 验证后优雅降级
+3. ✅ 事件重复触发—— 新增 `repeatable` 字段控制
+4. ✅ 输入未消毒—— sanitize.js 已覆盖
+
+## 技术债务（移至 Day 4）
+
+- [ ] ESLint + Prettier 配置
+- [ ] Jest 正式测试框架（当前为断言测试）
+- [ ] SQLite 持久化（Phase 2）
+- [ ] 接入 SillyTavern LLM 生成（Phase 2）
+- [ ] Winston/Pino 日志系统
 
 ---
 
-## 已知问题
-
-1. ✅ 前端 Extension 已连接后端 API（health check → 模组加载 → 场景显示）
-2. 状态机意图解析仅用关键词匹配，需 LLM 升级（Phase 2）
-3. NPC 决策的 LLM 调用尚未接入 SillyTavern 生成系统
-4. 存档系统使用内存存储，重启丢失（SQLite 待 Phase 2）
-5. 缺少 ESLint 配置（Day 4 Pipeline）
-
----
-
-## 文件清单
-
-```
-sillytavern-ai-gm/
-├── manifest.json              ✅
-├── index.js                   ✅ Day1 完善：API连接 + UI交互
-├── style.css                  ✅ Day1 新增：状态条/出口/加载/弹窗样式
-├── README.md                  ✅
-├── docs/
-│   ├── rate-limiting.md       ✅
-│   └── module-format.md       📋 待写
-└── plugin/
-    ├── index.js               ✅ Day1 完善：错误处理 + dice_check + 场景切换
-    ├── package.json           ✅ Day1 新增：测试脚本
-    ├── .env.example           ✅ Day1 新增：环境配置模板
-    ├── test/
-    │   └── index.js           ✅ Day1 新增：全模块测试
-    ├── engine/
-    │   ├── module-parser.js   ✅
-    │   ├── state-machine.js   ✅
-    │   ├── rule-engine.js     ✅
-    │   ├── dice.js            ✅
-    │   ├── combat-tracker.js  ✅
-    │   └── npc-decision.js    ✅
-    ├── storage/
-    │   └── campaign.js        ✅
-    └── utils/
-        └── prompt-builder.js  ✅
-```
-
-## 技术债务
-
-- [ ] 添加 Jest 测试框架（当前为简单 Node.js 测试）
-- [ ] 配置 ESLint + Prettier（Day 4）
-- [ ] 实现 SQLite 持久化（Phase 2）
-- [ ] 接入 SillyTavern 的 LLM 生成系统（Phase 2）
-- [ ] 添加日志系统（Winston/Pino）
-- [ ] 实现错误追踪（Sentry 或简单文件日志）
-
----
-
-*状态更新：2026-06-06 09:15*  
-*Git Commit: 10f0dfe - feat(surface): Day 1 frontend panel + backend API + error handling*
+*状态更新：2026-06-06 21:00*  
+*Git Commit: eee3d4c - feat(guard): Day 3 - fix dice memory leak, add JSDoc, boundary checks, sanitize input*
