@@ -10,15 +10,15 @@
 
 | 模块 | 状态 | 完成度 | 说明 |
 |------|------|--------|------|
-| **前端 Extension** | ✅ Day1 完成 | 60% | 面板 + API连接 + 场景/NPC/玩家状态UI + 掷骰/存档弹窗 + 加载状态 |
-| **后端 Plugin** | ✅ Day1 完成 | 60% | 路由完善 + 错误中间件 + dice_check分支 + 场景切换 + 中文 narration |
+| **前端 Extension** | ✅ Day1 完成 | 65% | Day2 新增：存档槽位UI + 战斗日志 + HP同步 |
+| **后端 Plugin** | ✅ Day2 完成 | 70% | Day2 新增：combat_summary + save/list + 玩家HP同步 |
 | **模组解析器** | ✅ 基础 | 40% | JSON 解析 + Markdown 占位 |
-| **状态机** | ✅ 基础 | 40% | 场景切换 + 意图解析（关键词匹配）+ 场景出口按钮 |
-| **规则引擎** | ✅ COC 7e | 55% | d100 检定 + SAN 计算 + 伤害公式 + 中文 narration |
+| **状态机** | ✅ Day2 完成 | 70% | 场景切换 + interact动作 + 事件触发 + 检定联动 + 结局 |
+| **规则引擎** | ✅ Day2 完成 | 70% | d100检定 + DB计算 + 伤害公式 + 最大骰子 + 中文narration |
 | **骰子系统** | ✅ 完成 | 80% | 多面骰 + 表达式 + 历史记录 |
-| **战斗系统** | 🚧 基础 | 40% | 先攻 + 回合 + 攻击结算 |
+| **战斗系统** | ✅ Day2 完成 | 70% | 先攻 + 回合 + 攻击结算 + 敌人AI + HP同步 + 战斗日志 |
 | **NPC 决策** | 🚧 骨架 | 25% | 规则驱动 + LLM 占位 |
-| **存档系统** | 🚧 骨架 | 20% | 内存存档 + 存/读 API，SQLite 待 Phase 2 |
+| **存档系统** | ✅ Day2 完成 | 60% | 5存档位内存存档 + 存档列表 + 日志系统 |
 | **提示词构建** | ✅ 完成 | 70% | GM/NPC/场景/战斗/SAN 提示词 |
 | **测试模组** | ✅ 完成 | 100% | 「阿卡姆之夜」5 场景 4 NPC 2 结局 |
 | **限流方案** | ✅ 文档 | 100% | 已写入 docs/rate-limiting.md |
@@ -56,22 +56,76 @@
 
 ---
 
-## 下一步（Day 2·Engine）
+## Day 2 Engine 完成记录
 
-### 状态机增强
-- [ ] 添加 `dice_check` 触发场景事件的条件判断
-- [ ] 实现 `interact` 动作类型（检查物品、阅读古籍）
-- [ ] 场景事件系统：`library_whispers` 等随机事件触发
+### 状态机 (state-machine.js)
+- ✅ `interact` 动作类型：检查物品、阅读古籍、拾取物品
+- ✅ 场景事件系统：触发条件(scene/action/time/chance)、效果应用、SAN检定
+- ✅ 技能检定自动生成：从玩家输入提取技能名（图书馆使用/侦查/聆听等）
+- ✅ 检定成功触发场景事件：如地下室侦查成功发现隐藏门
+- ✅ NPC 对话交互：单NPC默认、多NPC选择、名字匹配
+- ✅ 战斗触发：检查场景 combat.enabled，返回敌人列表
+- ✅ 结局支持：场景 ending 字段触发结局页面
+- ✅ 条件评估增强：支持范围、布尔、数值、字符串条件
+- ✅ 物品效果解析：`cult_awareness + 1`, `sanity_loss 1d3` 等
 
-### 战斗系统完善
-- [ ] 玩家 HP 同步到前端状态条
-- [ ] 敌人攻击回合自动处理
-- [ ] 伤害计算公式接入 RuleEngine
+### 战斗系统 (combat-tracker.js)
+- ✅ 玩家 HP 同步：applyDamage 同时更新 campaign.player.hp
+- ✅ 敌人自动攻击回合：processEnemyAutoTurn() 连续处理AI敌人
+- ✅ 敌人AI决策：HP<20%逃跑、HP<50%使用魔法、默认攻击
+- ✅ 伤害计算接入 RuleEngine：calculateDamageBonus() + 武器伤害
+- ✅ 暴击/大失败处理：暴击=max伤害、大失败=自伤
+- ✅ 战斗日志：round/turn/damage 全程记录
+- ✅ 战斗摘要 API：getCombatSummary() 供前端实时更新
+- ✅ 治疗/恢复：heal() 方法支持物品/急救
+- ✅ 回合跳过已击败单位：advanceTurn() 自动跳过 defeated 列表
 
-### CoC 规则完善
-- [ ] 技能检定请求自动生成 `[ROLL: 技能名 目标值]` 提示词标记
-- [ ] SAN 损失自动计算并更新玩家状态
-- [ ] 追逐规则（Chase）基础框架
+### 规则引擎 (rule-engine.js)
+- ✅ CoC 7e 伤害加成(DB)计算：STR+SIZ 对照表 (-2 到 +2d6)
+- ✅ 最大骰子值：getMaxDiceRoll() 用于暴击伤害
+- ✅ 增强骰子解析：支持 `1d6+3`, `2d10-2` 等
+
+### 存档系统 (storage/campaign.js)
+- ✅ 5 存档位内存存储：slot 1-5，带标签和场景信息
+- ✅ 存档列表 API：getSnapshots() 返回全部存档信息
+- ✅ 存档元数据：场景ID、回合数、保存时间、标签
+- ✅ 行动日志系统：logAction() + getHistory() + getFullCampaignLog()
+- ✅ 日志统计：动作类型分布、角色分布、骰子检定次数等
+- ✅ 移除 better-sqlite3 静态依赖（改为动态导入备用）
+
+### 后端 API (plugin/index.js)
+- ✅ `/combat/init` 返回 combat_summary
+- ✅ `/combat/action` 返回 combat_summary + 同步 player HP
+- ✅ `/save` 使用 CampaignStorage.saveSnapshot()
+- ✅ `/save/list` 新端点：返回存档位列表
+- ✅ `/load` 使用 CampaignStorage.loadSnapshot()
+- ✅ 所有存档/战斗路由改为 asyncHandler 包装
+
+### 前端 (index.js)
+- ✅ 战斗 UI 同步：updateCombatUI() 从 combat_summary 更新玩家 HP
+- ✅ 存档弹窗增强：5 个存档位选择，显示场景/回合/时间信息
+- ✅ 存档读取后自动刷新场景和玩家状态
+
+### 样式 (style.css)
+- ✅ 存档槽位样式：selected/empty/active 状态
+- ✅ 战斗日志样式：滚动区域 + 日志条目
+
+## 下一步（Day 3·Guard）
+
+### 测试框架
+- [ ] 修复 test/index.js 内存溢出问题（Node 16 环境循环引用？）
+- [ ] 添加 Jest 测试框架或改用轻量测试方案
+- [ ] 编写单元测试覆盖所有 engine 模块
+
+### Bug 修复
+- [ ] 测试场景事件在多次触发的边界处理
+- [ ] 战斗结束时清理 combat_state 的边界检查
+- [ ] 存档读取后恢复 combat_state 的完整性
+
+### 类型安全
+- [ ] 添加 JSDoc 类型注解到所有公共 API
+- [ ] 参数验证中间件（统一 schema 验证）
+- [ ] 输入 sanitization（防止 XSS 注入到 narration）
 
 ---
 
