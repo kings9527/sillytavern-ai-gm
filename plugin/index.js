@@ -30,6 +30,26 @@ const dice = new DiceRoller();
 const rules = new RuleEngine('coc'); // Default to Call of Cthulhu
 
 /**
+ * Error handling middleware
+ * Wraps async route handlers to catch errors
+ */
+const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+/**
+ * Global error handler for AI-GM routes
+ */
+function errorHandler(err, req, res, next) {
+    console.error(`[AI-GM] ${req.method} ${req.path} error:`, err.message);
+    res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Internal server error',
+        timestamp: new Date().toISOString()
+    });
+}
+
+/**
  * Health check endpoint
  */
 router.get('/health', (req, res) => {
@@ -40,40 +60,31 @@ router.get('/health', (req, res) => {
  * Parse and validate a module
  * POST /api/plugins/ai-gm/module/parse
  */
-router.post('/module/parse', async (req, res) => {
-    try {
-        const { source, format = 'markdown' } = req.body;
-        const parser = new ModuleParser(format);
-        const module = await parser.parse(source);
-        
-        res.json({ 
-            success: true, 
-            module,
-            warnings: parser.warnings || []
-        });
-    } catch (e) {
-        res.status(400).json({ success: false, error: e.message });
-    }
-});
+router.post('/module/parse', asyncHandler(async (req, res) => {
+    const { source, format = 'markdown' } = req.body;
+    const parser = new ModuleParser(format);
+    const module = await parser.parse(source);
+
+    res.json({
+        success: true,
+        module,
+        warnings: parser.warnings || []
+    });
+}));
 
 /**
  * Load a built-in module
  * POST /api/plugins/ai-gm/module/load/:moduleId
  */
-router.post('/module/load/:moduleId', async (req, res) => {
-    try {
-        const { moduleId } = req.params;
-        const modulePath = `./modules/${moduleId}.json`;
-        
-        // For MVP, return built-in test module
-        const module = getBuiltinModule(moduleId);
-        loadedModules.set(moduleId, module);
-        
-        res.json({ success: true, module });
-    } catch (e) {
-        res.status(404).json({ success: false, error: e.message });
-    }
-});
+router.post('/module/load/:moduleId', asyncHandler(async (req, res) => {
+    const { moduleId } = req.params;
+
+    // For MVP, return built-in test module
+    const module = getBuiltinModule(moduleId);
+    loadedModules.set(moduleId, module);
+
+    res.json({ success: true, module });
+}));
 
 /**
  * List available modules
@@ -92,167 +103,223 @@ router.get('/module/list', (req, res) => {
  * Create a new campaign
  * POST /api/plugins/ai-gm/campaign/create
  */
-router.post('/campaign/create', async (req, res) => {
-    try {
-        const { module_id, player_name = 'Investigator' } = req.body;
-        const module = loadedModules.get(module_id);
-        
-        if (!module) {
-            return res.status(404).json({ success: false, error: 'Module not found' });
-        }
-        
-        const campaignId = generateCampaignId();
-        const campaign = {
-            id: campaignId,
-            module_id,
-            created_at: new Date().toISOString(),
-            current_scene: module.start_scene,
-            scene_history: [module.start_scene],
-            player: {
-                id: 'player_1',
-                name: player_name,
-                stats: module.system === 'coc' ? createCoCCharacter() : {},
-                inventory: [],
-                status_effects: [],
-                sanity: module.system === 'coc' ? 50 : null,
-                max_sanity: module.system === 'coc' ? 50 : null
-            },
-            npcs_state: initializeNPCs(module.npcs),
-            global_vars: { ...module.global_vars },
-            combat_state: null,
-            session_log: []
-        };
-        
-        campaigns.set(campaignId, campaign);
-        
-        res.json({ success: true, campaign_id: campaignId, campaign });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/campaign/create', asyncHandler(async (req, res) => {
+    const { module_id, player_name = 'Investigator', player_stats = null } = req.body;
+    const module = loadedModules.get(module_id);
+
+    if (!module) {
+        return res.status(404).json({ success: false, error: 'Module not found' });
     }
-});
+
+    const campaignId = generateCampaignId();
+    const playerStats = player_stats || (module.system === 'coc' ? createCoCCharacter() : {});
+
+    const campaign = {
+        id: campaignId,
+        module_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        current_scene: module.start_scene,
+        scene_history: [module.start_scene],
+        player: {
+            id: 'player_1',
+            name: player_name,
+            stats: playerStats,
+            inventory: [],
+            status_effects: [],
+            sanity: module.system === 'coc' ? (playerStats.SAN || playerStats.POW || 50) : null,
+            max_sanity: module.system === 'coc' ? (playerStats.SAN || playerStats.POW || 50) : null,
+            hp: playerStats.HP || 10,
+            max_hp: playerStats.HP || 10
+        },
+        npcs_state: initializeNPCs(module.npcs),
+        global_vars: { ...module.global_vars },
+        combat_state: null,
+        session_log: []
+    };
+
+    campaigns.set(campaignId, campaign);
+
+    res.json({
+        success: true,
+        campaign_id: campaignId,
+        campaign: {
+            id: campaign.id,
+            current_scene: campaign.current_scene,
+            player: campaign.player,
+            npcs_state: campaign.npcs_state,
+            global_vars: campaign.global_vars
+        }
+    });
+}));
 
 /**
  * Process player action
  * POST /api/plugins/ai-gm/state/action
  */
-router.post('/state/action', async (req, res) => {
-    try {
-        const { campaign_id, action_type, action_data, player_input } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
+router.post('/state/action', asyncHandler(async (req, res) => {
+    const { campaign_id, action_type, action_data, player_input } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+
+    const module = loadedModules.get(campaign.module_id);
+    const stateMachine = new GameStateMachine(module, campaign);
+
+    // Handle dice check action type
+    if (action_type === 'dice_check') {
+        const { skill, skill_value, modifier = 0 } = action_data || {};
+        if (!skill || skill_value === undefined) {
+            return res.status(400).json({ success: false, error: 'Missing skill or skill_value for dice_check' });
         }
-        
-        const module = loadedModules.get(campaign.module_id);
-        const stateMachine = new GameStateMachine(module, campaign);
-        
-        const result = await stateMachine.processAction({
-            action_type,
-            action_data,
-            player_input
-        });
-        
+
+        const roll = dice.roll('1d100').total;
+        const target = skill_value + modifier;
+        const success = roll <= target;
+        const critical = roll <= 5;
+        const fumble = roll >= 96;
+        let degree = null;
+        if (roll <= Math.floor(target / 5)) degree = 'extreme';
+        else if (roll <= Math.floor(target / 2)) degree = 'hard';
+
+        const result = {
+            type: 'dice_check',
+            skill,
+            roll,
+            target,
+            result: fumble ? 'fumble' : critical ? 'critical' : success ? 'success' : 'fail',
+            degree,
+            narration: buildCheckNarration(skill, roll, target, fumble ? 'fumble' : critical ? 'critical' : success ? 'success' : 'fail')
+        };
+
         // Log the action
         campaign.session_log.push({
             timestamp: new Date().toISOString(),
-            type: 'player',
+            type: 'dice_check',
             actor: campaign.player.name,
-            content: player_input,
-            metadata: { action_type, action_data }
+            content: `${skill} check: ${roll} vs ${target}`,
+            metadata: { skill, roll, target, result: result.result }
         });
-        
-        res.json({ success: true, ...result });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+
+        campaign.updated_at = new Date().toISOString();
+        return res.json({ success: true, ...result });
     }
-});
+
+    // Handle scene transition action
+    if (action_type === 'scene_transition') {
+        const { scene_id } = action_data || {};
+        if (!scene_id) {
+            return res.status(400).json({ success: false, error: 'Missing scene_id for scene_transition' });
+        }
+        const result = await stateMachine.transitionTo(scene_id);
+        campaign.updated_at = new Date().toISOString();
+
+        // Log the action
+        campaign.session_log.push({
+            timestamp: new Date().toISOString(),
+            type: 'scene_transition',
+            actor: campaign.player.name,
+            content: `Moved to ${scene_id}`,
+            metadata: { scene_id }
+        });
+
+        return res.json({ success: true, ...result });
+    }
+
+    const result = await stateMachine.processAction({
+        action_type,
+        action_data,
+        player_input
+    });
+
+    // Log the action
+    campaign.session_log.push({
+        timestamp: new Date().toISOString(),
+        type: 'player',
+        actor: campaign.player.name,
+        content: player_input,
+        metadata: { action_type, action_data }
+    });
+
+    campaign.updated_at = new Date().toISOString();
+    res.json({ success: true, ...result });
+}));
 
 /**
  * Transition to a specific scene (GM override)
  */
-router.post('/state/transition', async (req, res) => {
-    try {
-        const { campaign_id, scene_id } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const module = loadedModules.get(campaign.module_id);
-        const stateMachine = new GameStateMachine(module, campaign);
-        const result = await stateMachine.transitionTo(scene_id);
-        
-        res.json({ success: true, ...result });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/state/transition', asyncHandler(async (req, res) => {
+    const { campaign_id, scene_id } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    const module = loadedModules.get(campaign.module_id);
+    const stateMachine = new GameStateMachine(module, campaign);
+    const result = await stateMachine.transitionTo(scene_id);
+
+    campaign.current_scene = scene_id;
+    campaign.scene_history.push(scene_id);
+    campaign.updated_at = new Date().toISOString();
+
+    res.json({ success: true, ...result });
+}));
 
 /**
  * Combat: Initialize combat
  */
-router.post('/combat/init', async (req, res) => {
-    try {
-        const { campaign_id, enemies } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const combat = new CombatTracker(campaign);
-        const result = combat.initCombat(enemies);
-        campaign.combat_state = combat.getState();
-        
-        res.json({ success: true, ...result });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/combat/init', asyncHandler(async (req, res) => {
+    const { campaign_id, enemies } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    const combat = new CombatTracker(campaign);
+    const result = combat.initCombat(enemies);
+    campaign.combat_state = combat.getState();
+
+    res.json({ success: true, ...result });
+}));
 
 /**
  * Combat: Process action
  */
-router.post('/combat/action', async (req, res) => {
-    try {
-        const { campaign_id, actor, action, target, params } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const combat = new CombatTracker(campaign);
-        combat.loadState(campaign.combat_state);
-        const result = combat.processAction(actor, action, target, params);
-        campaign.combat_state = combat.getState();
-        
-        res.json({ success: true, ...result });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/combat/action', asyncHandler(async (req, res) => {
+    const { campaign_id, actor, action, target, params } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    const combat = new CombatTracker(campaign);
+    combat.loadState(campaign.combat_state);
+    const result = combat.processAction(actor, action, target, params);
+    campaign.combat_state = combat.getState();
+
+    res.json({ success: true, ...result });
+}));
 
 /**
  * Combat: End combat
  */
-router.post('/combat/end', async (req, res) => {
-    try {
-        const { campaign_id } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        campaign.combat_state = null;
-        res.json({ success: true, message: 'Combat ended' });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/combat/end', asyncHandler(async (req, res) => {
+    const { campaign_id } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    campaign.combat_state = null;
+    res.json({ success: true, message: 'Combat ended' });
+}));
 
 /**
  * Rules: Dice roll
@@ -346,50 +413,42 @@ router.post('/load', (req, res) => {
 /**
  * NPC decision endpoint
  */
-router.post('/npc/decide', async (req, res) => {
-    try {
-        const { campaign_id, npc_id, situation } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const engine = new NPCDecisionEngine(campaign, npc_id);
-        const decision = await engine.decide(situation);
-        
-        res.json({ success: true, ...decision });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/npc/decide', asyncHandler(async (req, res) => {
+    const { campaign_id, npc_id, situation } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    const engine = new NPCDecisionEngine(campaign, npc_id);
+    const decision = await engine.decide(situation);
+
+    res.json({ success: true, ...decision });
+}));
 
 /**
  * Generate NPC dialogue
  */
-router.post('/npc/generate-dialogue', async (req, res) => {
-    try {
-        const { campaign_id, npc_id, context_summary, mood } = req.body;
-        const campaign = campaigns.get(campaign_id);
-        
-        if (!campaign) {
-            return res.status(404).json({ success: false, error: 'Campaign not found' });
-        }
-        
-        const promptBuilder = new PromptBuilder(campaign);
-        const prompt = promptBuilder.buildNPCDialoguePrompt(npc_id, context_summary, mood);
-        
-        // TODO: Call LLM API through SillyTavern's generation system
-        // For MVP, return a placeholder
-        res.json({ 
-            success: true, 
-            dialogue: `[NPC ${npc_id} responds in ${mood} mood]`,
-            prompt_preview: prompt
-        });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+router.post('/npc/generate-dialogue', asyncHandler(async (req, res) => {
+    const { campaign_id, npc_id, context_summary, mood } = req.body;
+    const campaign = campaigns.get(campaign_id);
+
+    if (!campaign) {
+        return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
-});
+
+    const promptBuilder = new PromptBuilder(campaign);
+    const prompt = promptBuilder.buildNPCDialoguePrompt(npc_id, context_summary, mood);
+
+    // TODO: Call LLM API through SillyTavern's generation system
+    // For MVP, return a placeholder with prompt preview
+    res.json({
+        success: true,
+        dialogue: `[NPC ${npc_id} responds in ${mood} mood]`,
+        prompt_preview: prompt
+    });
+}));
 
 // ==================== Helper Functions ====================
 
@@ -439,6 +498,34 @@ function getBuiltinModule(moduleId) {
         return getArkhamNightModule();
     }
     throw new Error(`Unknown module: ${moduleId}`);
+}
+
+/**
+ * Build narration text for dice check results
+ * @param {string} skill - Skill name
+ * @param {number} roll - Dice roll result
+ * @param {number} target - Target value
+ * @param {string} result - Check result
+ * @returns {string} Narration text
+ */
+function buildCheckNarration(skill, roll, target, result) {
+    const diff = target - roll;
+    switch (result) {
+        case 'critical':
+            return `大成功！你的${skill}检定结果${roll}，远超预期！`;
+        case 'extreme':
+            return `极难成功！${skill}检定${roll}，近乎完美的表现。`;
+        case 'hard':
+            return `困难成功！${skill}检定${roll}，你的技巧令人印象深刻。`;
+        case 'success':
+            return `成功！${skill}检定${roll}，刚好在范围内。`;
+        case 'fumble':
+            return `大失败！${skill}检定${roll}...灾难性的失误。`;
+        case 'fail':
+            return `失败。${skill}检定${roll}，还差${diff}点。`;
+        default:
+            return `${skill}检定：${roll} / ${target}`;
+    }
 }
 
 function getArkhamNightModule() {
@@ -677,4 +764,4 @@ function getArkhamNightModule() {
 export default router;
 
 // Also export for plugin loader
-export { router };
+export { router, errorHandler };

@@ -5,7 +5,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Tests not yet implemented\""
+    "test": "node test/index.js",
+    "test:dice": "node test/index.js --grep Dice",
+    "test:rules": "node test/index.js --grep Rule",
+    "test:combat": "node test/index.js --grep Combat",
+    "test:state": "node test/index.js --grep State"
   },
   "dependencies": {
     "dice-roller": "^5.0.0",

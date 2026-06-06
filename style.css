@@ -9,6 +9,39 @@
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 10px;
     margin: 10px 0;
+    position: relative;
+}
+
+.ai-gm-panel.ai-gm-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.ai-gm-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    padding: 12px 20px;
+    z-index: 100;
+}
+
+.ai-gm-loader-text {
+    font-size: 0.9em;
+    color: var(--SmartThemeTextColor);
+}
+
+.ai-gm-error {
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    color: #ff6b6b;
+    margin-bottom: 8px;
 }
 
 .ai-gm-header {
@@ -92,8 +125,127 @@
     padding: 2px 8px;
     font-size: 0.8em;
     color: var(--SmartThemeTextColor);
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
+.ai-gm-npc-tag:hover {
+    background: var(--SmartThemeBotMesBlurTintColor);
+}
+
+.ai-gm-npc-tag.hostile {
+    border-color: rgba(255, 0, 0, 0.5);
+    background: rgba(255, 0, 0, 0.1);
+}
+
+.ai-gm-npc-tag.friendly {
+    border-color: rgba(0, 255, 0, 0.5);
+    background: rgba(0, 255, 0, 0.1);
+}
+
+/* Exits */
+.ai-gm-exits-container {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ai-gm-exit-btn {
+    font-size: 0.85em;
+    text-align: left;
+}
+
+/* Player Stats */
+.ai-gm-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ai-gm-stat-row {
+    display: flex;
+    align-items: center;
+}
+
+.ai-gm-stat-label {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: var(--SmartThemeTextColor);
+}
+
+.ai-gm-stat-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-gm-stat-name {
+    font-size: 0.8em;
+    width: 30px;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.8;
+}
+
+.ai-gm-stat-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--SmartThemeDarkColor);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ai-gm-stat-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.ai-gm-stat-bar-fill.hp {
+    background: linear-gradient(90deg, #ff6b6b, #ee5a5a);
+}
+
+.ai-gm-stat-bar-fill.sanity {
+    background: linear-gradient(90deg, #9b59b6, #8e44ad);
+}
+
+.ai-gm-stat-value {
+    font-size: 0.8em;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.8;
+    width: 40px;
+    text-align: right;
+}
+
+.ai-gm-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.ai-gm-stat-cell {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--SmartThemeDarkColor);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.ai-gm-stat-attr {
+    font-size: 0.75em;
+    color: var(--SmartThemeTextColor);
+    opacity: 0.7;
+}
+
+.ai-gm-stat-num {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--SmartThemeTextColor);
+}
+
+/* Combat */
 .ai-gm-combat-panel {
     background: rgba(255, 0, 0, 0.05);
     border-color: rgba(255, 0, 0, 0.3);
@@ -144,12 +296,66 @@
     gap: 4px;
 }
 
-.ai-gm-stats {
+/* Dice Dialog */
+.ai-gm-dice-dialog {
+    padding: 10px;
+    min-width: 200px;
+}
+
+.ai-gm-dice-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.ai-gm-dice-preset {
+    font-size: 0.85em;
+}
+
+.ai-gm-dice-result {
+    text-align: center;
+    padding: 8px;
+    background: var(--SmartThemeDarkColor);
+    border-radius: 6px;
+}
+
+.ai-gm-dice-roll {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
+.ai-gm-dice-expr {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.ai-gm-dice-total {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--SmartThemeTextColor);
+}
+
+.ai-gm-dice-detail {
+    font-size: 0.75em;
+    opacity: 0.6;
+}
+
+/* Save Dialog */
+.ai-gm-save-dialog {
+    padding: 10px;
+    min-width: 200px;
+}
+
+.ai-gm-save-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Debug */
 .ai-gm-debug {
     font-family: monospace;
     font-size: 0.8em;
@@ -177,5 +383,9 @@
     
     .ai-gm-combat-actions {
         grid-template-columns: 1fr;
+    }
+    
+    .ai-gm-dice-presets {
+        grid-template-columns: 1fr 1fr;
     }
 }
