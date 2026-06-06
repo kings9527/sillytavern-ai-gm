@@ -24,8 +24,13 @@ export class CombatTracker {
      * Initialize combat with enemies
      * @param {Array<string>} enemies - Array of enemy NPC IDs
      * @returns {object} Combat state
+     * @throws {Error} If enemies array is empty or invalid
      */
     initCombat(enemies) {
+        if (!Array.isArray(enemies) || enemies.length === 0) {
+            throw new Error('Combat requires at least one enemy');
+        }
+
         const initiative = [];
 
         // Add player
@@ -109,6 +114,11 @@ export class CombatTracker {
 
         let result = { action, actor, log: '' };
 
+        // Validate current actor exists
+        if (!currentActor) {
+            throw new Error('无效的回合状态：找不到当前行动者');
+        }
+
         switch (action) {
             case 'attack':
                 result = this.resolveAttack(actor, target, params);
@@ -151,6 +161,17 @@ export class CombatTracker {
     resolveAttack(attacker, target, params = {}) {
         const attackerData = this.state.initiative.find(i => i.entity_id === attacker);
         const targetData = this.state.initiative.find(i => i.entity_id === target);
+
+        if (!attackerData) {
+            return {
+                action: 'attack',
+                actor: attacker,
+                target,
+                hit: false,
+                damage: 0,
+                log: '攻击者不存在。'
+            };
+        }
 
         if (!targetData) {
             return {
@@ -262,48 +283,62 @@ export class CombatTracker {
      * Apply damage to target
      * @param {string} target - Target entity ID
      * @param {number} damage - Damage amount
+     * @returns {boolean} True if damage was applied successfully
      */
     applyDamage(target, damage) {
+        // Validate target exists in initiative
+        const targetInit = this.state.initiative.find(i => i.entity_id === target);
+        if (!targetInit) {
+            console.warn(`[CombatTracker] applyDamage: target ${target} not found in initiative`);
+            return false;
+        }
+
         // Handle player damage
         if (target === 'player_1') {
-            const oldHp = this.campaign.player.hp || 10;
+            const oldHp = this.campaign.player?.hp || 10;
             const newHp = Math.max(0, oldHp - damage);
-            this.campaign.player.hp = newHp;
+            if (this.campaign.player) {
+                this.campaign.player.hp = newHp;
+            }
             this.state.total_damage_taken += damage;
 
             // Check for unconscious/death
             if (newHp <= 0) {
                 this.state.active = false;
-                this.state.log.push(`${this.campaign.player.name} 倒下——失去意识！战斗结束。`);
+                this.state.log.push(`${this.campaign.player?.name || '玩家'} 倒下——失去意识！战斗结束。`);
             }
-            return;
+            return true;
         }
 
         // Handle NPC damage
-        const npc = this.campaign.npcs_state[target];
+        const npc = this.campaign.npcs_state?.[target];
         if (npc) {
-            npc.current_hp = Math.max(0, npc.current_hp - damage);
+            npc.current_hp = Math.max(0, (npc.current_hp || 0) - damage);
 
             // Check if defeated
             if (npc.current_hp <= 0) {
                 this.state.defeated.push(target);
-                this.state.log.push(`${this.state.initiative.find(i => i.entity_id === target)?.name || target} 被击败了！`);
+                this.state.log.push(`${targetInit.name || target} 被击败了！`);
             }
         }
 
         // Check if all enemies are defeated
         this.checkCombatEnd();
+        return true;
     }
 
     /**
      * Check if combat should end
+     * Sets combat state inactive and triggers end conditions.
      */
     checkCombatEnd() {
+        if (!this.state || !this.state.active) return;
+
         const enemiesAlive = this.state.initiative.filter(
-            i => i.type === 'enemy' && this.campaign.npcs_state[i.entity_id]?.current_hp > 0
+            i => i.type === 'enemy' && this.campaign.npcs_state?.[i.entity_id]?.current_hp > 0
         );
 
-        const playerAlive = this.campaign.player.hp > 0;
+        const playerAlive = (this.campaign.player?.hp || 0) > 0;
 
         if (enemiesAlive.length === 0) {
             this.state.active = false;
@@ -473,10 +508,21 @@ export class CombatTracker {
     }
 
     /**
-     * Load combat state
+     * Load combat state with validation
      * @param {object} state - Combat state to load
+     * @throws {Error} If state is invalid or missing required fields
      */
     loadState(state) {
+        if (!state || typeof state !== 'object') {
+            this.state = null;
+            return;
+        }
+        // Validate state structure
+        if (state.active && (!state.initiative || !Array.isArray(state.initiative) || state.initiative.length === 0)) {
+            console.warn('[CombatTracker] Invalid combat state: missing initiative');
+            this.state = null;
+            return;
+        }
         this.state = state;
     }
 
@@ -487,22 +533,29 @@ export class CombatTracker {
      * @returns {object} Heal result
      */
     heal(entityId, amount) {
+        if (!entityId || amount === undefined || amount <= 0) {
+            return { type: 'heal', entity: entityId, amount: 0, log: '治疗无效。' };
+        }
+
         if (entityId === 'player_1') {
-            const oldHp = this.campaign.player.hp || 0;
-            const maxHp = this.campaign.player.max_hp || 10;
-            this.campaign.player.hp = Math.min(maxHp, oldHp + amount);
+            const oldHp = this.campaign.player?.hp || 0;
+            const maxHp = this.campaign.player?.max_hp || 10;
+            if (this.campaign.player) {
+                this.campaign.player.hp = Math.min(maxHp, oldHp + amount);
+            }
+            const healed = (this.campaign.player?.hp || oldHp) - oldHp;
             return {
                 type: 'heal',
                 entity: entityId,
-                amount: this.campaign.player.hp - oldHp,
-                log: `${this.campaign.player.name} 恢复${this.campaign.player.hp - oldHp}点HP。当前HP: ${this.campaign.player.hp}/${maxHp}`
+                amount: healed,
+                log: `${this.campaign.player?.name || '玩家'} 恢复${healed}点HP。当前HP: ${this.campaign.player?.hp || oldHp}/${maxHp}`
             };
         }
 
-        const npc = this.campaign.npcs_state[entityId];
+        const npc = this.campaign.npcs_state?.[entityId];
         if (npc) {
-            const oldHp = npc.current_hp;
-            npc.current_hp = Math.min(npc.max_hp, oldHp + amount);
+            const oldHp = npc.current_hp || 0;
+            npc.current_hp = Math.min(npc.max_hp || 10, oldHp + amount);
             return {
                 type: 'heal',
                 entity: entityId,

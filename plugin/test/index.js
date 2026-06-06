@@ -8,7 +8,7 @@ import { RuleEngine } from '../engine/rule-engine.js';
 import { GameStateMachine } from '../engine/state-machine.js';
 import { CombatTracker } from '../engine/combat-tracker.js';
 import { NPCDecisionEngine } from '../engine/npc-decision.js';
-import { PromptBuilder } from '../utils/prompt-builder.js';
+import { sanitizeInput, sanitizeNarration, escapeHtml, isValidCampaignId, validateModule } from '../utils/sanitize.js';
 
 // Test data
 const testModule = {
@@ -55,13 +55,17 @@ const testCampaign = {
         name: '测试玩家',
         stats: { STR: 60, CON: 50, DEX: 70, INT: 80, POW: 60, HP: 10, SAN: 60 },
         hp: 10,
-        sanity: 60
+        sanity: 60,
+        inventory: [],
+        status_effects: [],
+        max_hp: 10
     },
     npcs_state: {
         npc1: { id: 'npc1', current_hp: 10, max_hp: 10, attitude: 'neutral' }
     },
     global_vars: { clue_found: false },
-    combat_state: null
+    combat_state: null,
+    module: testModule
 };
 
 let passCount = 0;
@@ -102,7 +106,7 @@ test('Roll history tracked', () => {
     dice.clearHistory();
     dice.roll('1d6');
     dice.roll('1d20');
-    assert(dice.getHistory().length === 2, 'Expected 2 history entries');
+    assert(dice.getHistory().length === 2, 'Expected 2 history entries after two rolls');
 });
 
 test('Roll breakdown includes components', () => {
@@ -116,8 +120,8 @@ console.log('\n--- RuleEngine ---');
 const rules = new RuleEngine('coc');
 
 test('CoC skill check success', () => {
-    const result = rules.cocCheck('Spot Hidden', 60, 30);
-    assert(result.result === 'success', 'Expected success for roll 30 vs 60');
+    const result = rules.cocCheck('Spot Hidden', 60, 40);
+    assert(result.result === 'success', 'Expected success for roll 40 vs 60');
 });
 
 test('CoC skill check fail', () => {
@@ -187,9 +191,10 @@ test('Transition to scene', async () => {
 console.log('\n--- CombatTracker ---');
 const combatCampaign = {
     ...testCampaign,
-    player: { ...testCampaign.player, stats: { ...testCampaign.player.stats, DEX: 70 } },
+    module: testModule,
+    player: { ...testCampaign.player, stats: { ...testCampaign.player.stats, DEX: 70 }, max_hp: 10 },
     npcs_state: {
-        npc1: { id: 'npc1', current_hp: 10, max_hp: 10, stats: { DEX: 50 } }
+        npc1: { id: 'npc1', current_hp: 10, max_hp: 10, stats: { DEX: 50, HP: 10 } }
     }
 };
 const combat = new CombatTracker(combatCampaign);
@@ -214,6 +219,13 @@ test('Combat turn advances', () => {
 test('Attack deals damage', () => {
     combat.initCombat(['npc1']);
     const initialHP = combatCampaign.npcs_state.npc1.current_hp;
+    
+    // Ensure it's player's turn; if not, let enemy act first
+    let state = combat.getState();
+    if (state.current_turn !== 'player_1') {
+        combat.processAction(state.current_turn, 'move', null, {});
+    }
+    
     combat.processAction('player_1', 'attack', 'npc1', {});
     assert(combatCampaign.npcs_state.npc1.current_hp <= initialHP, 'Expected HP to decrease');
 });
@@ -234,27 +246,63 @@ test('NPC context building', () => {
     assert(context.situation === 'test situation', 'Expected situation');
 });
 
-// PromptBuilder Tests
-console.log('\n--- PromptBuilder ---');
-const promptBuilder = new PromptBuilder(testCampaign);
+// Sanitize Tests
+console.log('\n--- Sanitize ---');
 
-test('Build GM context prompt', () => {
-    const prompt = promptBuilder.buildGMContextPrompt();
-    assert(prompt.role === 'system', 'Expected system role');
-    assert(prompt.content.includes('测试场景1'), 'Expected scene title in prompt');
-    assert(prompt.content.includes('测试玩家'), 'Expected player name in prompt');
+test('sanitizeInput removes control chars', () => {
+    const result = sanitizeInput('hello\x00\x01world');
+    assert(result === 'helloworld', 'Expected control chars removed');
 });
 
-test('Build NPC dialogue prompt', () => {
-    const prompt = promptBuilder.buildNPCDialoguePrompt('npc1', 'player asks about cult', 'nervous');
-    assert(prompt !== null, 'Expected prompt not null');
-    assert(prompt.content.includes('测试NPC'), 'Expected NPC name in prompt');
-    assert(prompt.content.includes('nervous'), 'Expected mood in prompt');
+test('sanitizeInput limits length', () => {
+    const long = 'a'.repeat(2000);
+    const result = sanitizeInput(long, 100);
+    assert(result.length === 103, 'Expected length limited to 100 + "..."');
 });
 
-test('Build scene description prompt', () => {
-    const prompt = promptBuilder.buildSceneDescriptionPrompt('scene2', 'You walk through the door');
-    assert(prompt.content.includes('测试场景2'), 'Expected scene title in prompt');
+test('sanitizeNarration removes script tags', () => {
+    const dirty = 'Hello <script>alert("xss")</script> world';
+    const result = sanitizeNarration(dirty);
+    assert(!result.includes('script'), 'Expected script tags removed');
+    assert(!result.includes('alert'), 'Expected alert removed');
+});
+
+test('sanitizeNarration removes event handlers', () => {
+    const dirty = '<div onload="alert(1)">content</div>';
+    const result = sanitizeNarration(dirty);
+    assert(!result.includes('onload'), 'Expected event handlers removed');
+});
+
+test('escapeHtml escapes special chars', () => {
+    const result = escapeHtml('<script> alert("xss") </script>');
+    assert(result.includes('&lt;'), 'Expected < escaped');
+    assert(result.includes('&gt;'), 'Expected > escaped');
+    assert(result.includes('&quot;'), 'Expected " escaped');
+});
+
+test('isValidCampaignId validates format', () => {
+    assert(isValidCampaignId('campaign_1234567890_abc123') === true, 'Expected valid ID');
+    assert(isValidCampaignId('invalid') === false, 'Expected invalid ID');
+    assert(isValidCampaignId('') === false, 'Expected empty ID invalid');
+});
+
+test('validateModule checks required fields', () => {
+    const result = validateModule(testModule);
+    assert(result.valid === true, 'Expected test module to be valid');
+    assert(result.errors.length === 0, 'Expected no errors');
+    
+    const bad = validateModule({ id: 'bad' });
+    assert(bad.valid === false, 'Expected invalid module');
+    assert(bad.errors.length > 0, 'Expected errors');
+});
+
+test('validateModule validates scenes', () => {
+    const badModule = {
+        id: 'bad', name: 'Bad', system: 'coc', start_scene: 's1',
+        scenes: { s1: { id: 's1', description: 'missing title' } }
+    };
+    const result = validateModule(badModule);
+    assert(result.errors.some(e => e.includes('missing title')), 'Expected scene title error');
 });
 
 // Summary

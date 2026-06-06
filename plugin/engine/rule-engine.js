@@ -1,13 +1,31 @@
 /**
  * Rule Engine
  * Supports multiple TTRPG systems via JSON configuration
+ * 
+ * Currently supported systems:
+ * - Call of Cthulhu 7th Edition (coc)
+ * - D&D 5th Edition (dnd5e)
+ * 
+ * @version 0.3.0
  */
 export class RuleEngine {
+    /**
+     * Create a new RuleEngine instance
+     * @param {string} system - TTRPG system identifier ('coc' or 'dnd5e')
+     */
     constructor(system = 'coc') {
+        /** @type {string} */
         this.system = system;
+        /** @type {object} */
         this.rules = this.loadSystemRules(system);
     }
 
+    /**
+     * Load system rules configuration
+     * @param {string} system - System identifier
+     * @returns {object} System rules configuration
+     * @private
+     */
     loadSystemRules(system) {
         const systems = {
             coc: {
@@ -60,6 +78,13 @@ export class RuleEngine {
         return systems[system] || systems.coc;
     }
 
+    /**
+     * Perform a skill check using the active system rules
+     * @param {string} skill - Skill name
+     * @param {number} skillValue - Skill value / target number
+     * @param {number} roll - Dice roll result (1-100 for CoC)
+     * @returns {{result: string, roll: number, target: number}} Check result
+     */
     check(skill, skillValue, roll) {
         const system = this.rules;
         if (system.name.includes('Cthulhu')) {
@@ -68,6 +93,13 @@ export class RuleEngine {
         return this.genericCheck(skill, skillValue, roll);
     }
 
+    /**
+     * CoC 7th Edition skill check
+     * @param {string} skill - Skill name
+     * @param {number} skillValue - Target value (skill level)
+     * @param {number} roll - d100 roll result
+     * @returns {{result: string, roll: number, target: number}} Check result with degree
+     */
     cocCheck(skill, skillValue, roll) {
         const target = skillValue;
         const success = roll <= target;
@@ -84,6 +116,13 @@ export class RuleEngine {
         return { result: 'fail', roll, target };
     }
 
+    /**
+     * Generic skill check for non-CoC systems
+     * @param {string} skill - Skill name
+     * @param {number} skillValue - Target value
+     * @param {number} roll - Dice roll
+     * @returns {{result: string, roll: number, target: number}} Check result
+     */
     genericCheck(skill, skillValue, roll) {
         return {
             result: roll <= skillValue ? 'success' : 'fail',
@@ -92,11 +131,10 @@ export class RuleEngine {
         };
     }
 
-
     /**
      * Calculate damage bonus (DB) based on STR+SIZ for CoC
-     * @param {object} stats - Entity stats
-     * @returns {object} DB result with total and formula
+     * @param {object} stats - Entity stats with STR and SIZ
+     * @returns {{total: number, formula: string}} DB result with total and formula string
      */
     calculateDamageBonus(stats) {
         if (!stats) return { total: 0, formula: '' };
@@ -123,8 +161,8 @@ export class RuleEngine {
 
     /**
      * Get maximum possible roll for a dice expression (for critical hits)
-     * @param {string} expression - Dice expression
-     * @returns {number} Max roll value
+     * @param {string} expression - Dice expression (e.g. "1d6", "2d10+3")
+     * @returns {number} Maximum possible roll value
      */
     getMaxDiceRoll(expression) {
         if (typeof expression === 'number') return expression;
@@ -136,13 +174,23 @@ export class RuleEngine {
         return count * sides + mod;
     }
 
-
+    /**
+     * Calculate sanity loss from a CoC sanity check
+     * @param {string} amount - Dice expression for sanity loss (e.g. "1d6", "1d20")
+     * @param {number} currentSanity - Current sanity value
+     * @returns {{loss: number, newSanity: number, insane: boolean}} Sanity loss result
+     */
     calculateSanityLoss(amount, currentSanity) {
         const loss = this.parseDiceExpression(amount);
         const newSanity = Math.max(0, currentSanity - loss);
         return { loss, newSanity, insane: newSanity <= 0 };
     }
 
+    /**
+     * Parse and roll a dice expression
+     * @param {string} expression - Dice expression (e.g. "1d6", "2d10+3")
+     * @returns {number} Total roll result
+     */
     parseDiceExpression(expression) {
         if (typeof expression === 'number') return expression;
         // Simple dice parser: "1d6+3" -> roll + 3

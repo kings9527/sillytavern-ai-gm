@@ -14,16 +14,20 @@ export class GameStateMachine {
     /**
      * Process player action and return game state update
      * @param {object} action - Player action
-     * @param {string} action.action_type - Action type (move, talk, inspect, interact, dice_check, attack, use, flee)
+     * @param {string} action.action_type - Action type
      * @param {string} action.player_input - Raw player input text
      * @param {object} action.action_data - Additional action data
      * @returns {Promise<object>} Game state result
+     * @throws {Error} If action is invalid or missing required fields
      */
     async processAction(action) {
+        if (!action || typeof action !== 'object') {
+            throw new Error('Invalid action: must be an object');
+        }
         const { action_type, player_input } = action;
 
         // 1. Parse intent from player input
-        const intent = await this.parseIntent(player_input, action_type);
+        const intent = await this.parseIntent(player_input || '', action_type);
 
         // 2. Check scene events (random or condition-based triggers)
         const eventResult = this.checkSceneEvents(intent);
@@ -100,6 +104,7 @@ export class GameStateMachine {
 
     /**
      * Check scene events based on current scene and action
+     * Prevents duplicate triggers for one-time events.
      * @param {object} intent - Current intent
      * @returns {object|null} Event result if triggered
      */
@@ -126,8 +131,13 @@ export class GameStateMachine {
             // Check random chance
             if (trigger.chance && Math.random() > trigger.chance) continue;
 
-            // Mark as triggered
-            this.campaign.global_vars[eventKey] = true;
+            // Check custom condition if defined
+            if (trigger.condition && !this.evaluateCondition(trigger.condition)) continue;
+
+            // Mark as triggered (if not repeatable)
+            if (!event.repeatable) {
+                this.campaign.global_vars[eventKey] = true;
+            }
 
             // Apply event effects
             if (event.effect) {
@@ -135,7 +145,7 @@ export class GameStateMachine {
             }
 
             // Build narration
-            let narration = event.description || '发生了一些事情...';
+            let narration = this.sanitizeNarration(event.description || '发生了一些事情...');
 
             // Add sanity check if required
             if (event.sanity_check) {
@@ -196,6 +206,7 @@ export class GameStateMachine {
 
     /**
      * Apply event effects to campaign state
+     * Supports: set, increment, decrement, dice, sanity_loss
      * @param {object} effects - Event effects
      */
     applyEventEffects(effects) {
@@ -206,6 +217,10 @@ export class GameStateMachine {
             } else if (key.includes('-')) {
                 const baseKey = key.replace('-', '').trim();
                 this.campaign.global_vars[baseKey] = (this.campaign.global_vars[baseKey] || 0) - value;
+            } else if (key === 'sanity_loss') {
+                const loss = this.parseDiceExpression(value);
+                const oldSanity = this.campaign.player.sanity || 50;
+                this.campaign.player.sanity = Math.max(0, oldSanity - loss);
             } else {
                 this.campaign.global_vars[key] = value;
             }
@@ -270,6 +285,10 @@ export class GameStateMachine {
         const interactables = this.currentScene.interactables || [];
         const items = this.module.items || {};
 
+        // Ensure player inventory exists
+        if (!this.campaign.player.inventory) {
+            this.campaign.player.inventory = [];
+        }
         // Try to find a matching item in the scene
         let matchedItem = null;
         for (const itemId of interactables) {
@@ -422,21 +441,53 @@ export class GameStateMachine {
 
     /**
      * Check events triggered by skill check success
+     * Uses module events configuration for flexible scene event triggers.
      * @param {string} skill - Skill name
      * @param {number} roll - Dice roll
      * @param {number} target - Target value
      * @returns {object|null} Triggered event
      */
     checkSkillSuccessEvents(skill, roll, target) {
-        // Check scene-specific events that require skill checks
-        if (this.currentScene.id === 'basement' && skill.includes('侦查') || skill.includes('spot')) {
-            if (roll <= target && !this.campaign.global_vars['clue:basement_secret']) {
-                this.campaign.global_vars['clue:basement_secret'] = true;
-                return {
-                    narration: '你的侦查技能让你发现了墙壁符号中隐藏的门！一个新的出口出现了。'
-                };
+        // Check if current scene has skill-triggered events configured
+        if (!this.module.events) return null;
+
+        for (const [eventId, event] of Object.entries(this.module.events)) {
+            const trigger = event.trigger;
+            if (!trigger) continue;
+            
+            // Only match events for current scene with skill trigger
+            if (trigger.scene && trigger.scene !== this.currentScene.id) continue;
+            if (!trigger.skill) continue;
+            
+            // Check skill match (supports partial match)
+            const skillMatch = trigger.skill.some(s => 
+                skill.toLowerCase().includes(s.toLowerCase()) || 
+                s.toLowerCase().includes(skill.toLowerCase())
+            );
+            if (!skillMatch) continue;
+            
+            // Check if already triggered
+            const eventKey = `event_triggered:${eventId}`;
+            if (this.campaign.global_vars[eventKey]) continue;
+            
+            // Check success condition
+            if (trigger.require_success !== false && roll > target) continue;
+            
+            // Mark as triggered
+            if (!event.repeatable) {
+                this.campaign.global_vars[eventKey] = true;
             }
+            
+            // Apply effects
+            if (event.effect) {
+                this.applyEventEffects(event.effect);
+            }
+            
+            return {
+                narration: this.sanitizeNarration(event.description || '你的技能发现了一些新线索...')
+            };
         }
+        
         return null;
     }
 
@@ -646,11 +697,17 @@ export class GameStateMachine {
      * @param {string} sceneId - Target scene ID
      * @param {object} metadata - Transition metadata
      * @returns {object} Scene transition result
+     * @throws {Error} If scene does not exist
      */
     async transitionTo(sceneId, metadata = {}) {
         const scene = this.module.scenes[sceneId];
         if (!scene) {
             throw new Error(`Scene not found: ${sceneId}`);
+        }
+
+        // Clear combat state when leaving a combat scene (if not moving to another combat scene)
+        if (this.currentScene?.combat?.enabled && !scene.combat?.enabled) {
+            this.campaign.combat_state = null;
         }
 
         this.campaign.scene_history.push(sceneId);
@@ -720,6 +777,19 @@ export class GameStateMachine {
     }
 
     // ==================== Utility Methods ====================
+
+    /**
+     * Sanitize narration text to prevent XSS injection
+     * @param {string} text - Raw text to sanitize
+     * @returns {string} Sanitized text
+     */
+    sanitizeNarration(text) {
+        if (typeof text !== 'string') return String(text);
+        // Remove HTML tags to prevent XSS
+        return text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, '')
+                   .replace(/javascript:/gi, '')
+                   .replace(/on\w+\s*=/gi, '');
+    }
 
     /**
      * Parse effect string (e.g., "cult_awareness + 1", "sanity_loss 1d3")
