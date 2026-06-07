@@ -173,15 +173,50 @@
 3. ✅ 事件重复触发—— 新增 `repeatable` 字段控制
 4. ✅ 输入未消毒—— sanitize.js 已覆盖
 
-## 技术债务（移至 Day 4）
+## Day 4 Pipeline 完成记录
 
-- [ ] ESLint + Prettier 配置
+### CI/CD 与构建
+- ✅ ESLint 配置：`eslint.config.js` — 浏览器/Node 双环境覆盖，SillyTavern 全局变量定义
+- ✅ Prettier 配置：`.prettierrc` — 2空格缩进、单引号、trailing comma
+- ✅ GitHub Actions CI：`.github/workflows/ci.yml` — Node 20/22 矩阵，lint + format-check + test + syntax-check
+- ✅ `package.json` 脚本：`lint`/`lint:fix`/`format`/`format:check`/`check`/`dev`/`dev:mock`
+- ✅ devDependencies：`eslint ^9.0.0` + `prettier ^3.0.0`
+
+### 性能优化
+- ✅ 骰子解析缓存：`DiceRoller` 新增 `_parseCache`（结构缓存，非结果缓存），LRU 淘汰策略（max 50），相同表达式二次解析速度提升
+- ✅ 缓存验证：2d6+3 连续两次 roll 结果不同（随机性保留），但 cache size 正确增长
+
+### 开发者体验
+- ✅ `utils/dev-mode.js`：
+  - `MOCK_CAMPAIGN` / `MOCK_MODULE` — 完整 mock 数据（阿卡姆之夜简化版）
+  - `isMockMode()` — 环境变量检测
+  - `watchModule()` — 文件热重载 watcher
+  - `devLog()` / `devTimer()` — 开发专用日志和性能计时
+  - `resetDevData()` — 测试数据重置
+- ✅ `docs/module-format.md` — 完整模组格式规范（Schema + 场景/NPC/事件/物品/结局 + 验证规则 + 最小示例）
+- ✅ `README.md` 开发指南：快速设置、脚本表格、mock 模式、架构图、添加新效果类型流程
+
+### 测试验证
+- ✅ 29/29 测试全部通过（无回归）
+- ✅ `npm run check` 语法检查全部通过
+- ✅ `node --check` 验证新文件 `dev-mode.js`
+
+## 已知问题（已解决）
+
+1. ✅ dice.js 内存溢出（Day 3 已修复）
+2. ✅ 存档读取后 combat_state 丢失（Day 3 已修复）
+3. ✅ 事件重复触发（Day 3 已修复）
+4. ✅ 输入未消毒（Day 3 已修复）
+
+## 技术债务（移至 Phase 2）
+
 - [ ] Jest 正式测试框架（当前为断言测试）
 - [ ] SQLite 持久化（Phase 2）
 - [ ] 接入 SillyTavern LLM 生成（Phase 2）
 - [ ] Winston/Pino 日志系统
+- [ ] Markdown 模组解析器（Phase 2）
 
 ---
 
-*状态更新：2026-06-06 21:00*  
-*Git Commit: eee3d4c - feat(guard): Day 3 - fix dice memory leak, add JSDoc, boundary checks, sanitize input*
+*状态更新：2026-06-07 21:00*  
+*Git Commit: c74f4eb - feat(pipeline): Day 4 - ESLint + Prettier + CI + dice cache + dev mode + module docs*

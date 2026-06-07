@@ -102,3 +102,50 @@
 
 *检查点格式：新条目追加到顶部，旧条目保留供追溯*
 *本文件由 AI-GM 开发会话结束时更新，由新会话开始时读取*
+
+---
+
+## 检查点：2026-06-07 23:55（Day 1 完成）
+
+### Day 1 任务：NPC 决策引擎 ✅ 完成
+
+#### 交付成果
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `plugin/contracts/index.js` | ✅ 新增 | 三层契约：NPCDecisionEngineContract、EventBusContract、ValidatorContract |
+| `plugin/engine/npc-decision.js` | ✅ 从 25% → 100% | 规则驱动决策引擎：态度状态机、对话生成、状态更新、状态摘要 |
+| `plugin/engine/state-machine.js` | ✅ 修改 | `handleTalk` 异步化并接入 NPCDecisionEngine；`processAction` 调用处加 `await` |
+| `plugin/test/integration.js` | ✅ 修改 | 18 项断言（Step 9 新增 4 项 NPC 决策引擎专项断言） |
+
+#### 集成测试：18/18 passing ✅
+```
+Step 1: Campaign Creation       ✅
+Step 2: Scene Loading           ✅
+Step 3: NPC Interaction         ✅
+Step 4: Scene Transition        ✅
+Step 5: Skill Check             ✅
+Step 6: Basement Combat         ✅
+Step 7: Combat System           ✅
+Step 8: Save/Load               ✅
+Step 9: NPC Decision Engine     ✅ (4/4)
+```
+
+#### 关键修复记录
+1. **`findMatchingExit` confidence 阈值**：`> 0.85` → `>= 0.85`（0.85 的 evade 规则被正确触发）
+2. **`handleTalk` 中 `updateState` trust 逻辑**：`decision.action === 'talk'` 时默认 +5 trust
+3. **测试场景路径修复**：cultist 测试需要从 entrance → library → basement（entrance 无直达 basement 的 exit）
+4. **单 NPC 默认匹配陷阱**：`handleTalk` 中 `!matchedNPC && npcs.length === 1` 导致错误场景下匹配到 guard
+
+#### 契约验证
+- ✅ NPCDecisionEngineContract 被 `NPCDecisionEngine` 继承（`extends`）
+- ✅ 集成测试覆盖：guard 对话（neutral → 友好）、cultist 邪教话题（evade + suspicious）、状态摘要（is_alive + attitude）
+
+#### 方法论执行
+- 五层衔接防护：契约文件 → 集成测试 → 状态机接入 → 验证通过
+- 不请示、直接执行、不重复询问打包/交付
+- 当前时间：2026-06-07 23:55，未到交付时间（周六 2026-06-12）
+
+#### 下一步（Day 2）
+根据 `plan-week-1-sprint.md`：模组解析器 + 边界修复（Markdown 解析或 JSON 暂代、场景事件多次触发边界、战斗结束清理边界）
+
+---

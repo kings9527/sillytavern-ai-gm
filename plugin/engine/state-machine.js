@@ -37,9 +37,9 @@ export class GameStateMachine {
 
         // 3. Check scene exits for movement intents
         if (intent.type === 'move') {
-            const matchedExit = this.findMatchingExit(intent, player_input);
+            const matchedExit = this.findMatchingExit(action.action_data?.direction, player_input);
             if (matchedExit) {
-                return this.transitionTo(matchedExit.target_scene, { intent, matchedExit });
+                return this.transitionTo(matchedExit.target, { intent, matchedExit });
             }
             return {
                 type: 'interaction',
@@ -59,9 +59,9 @@ export class GameStateMachine {
             return this.handleInteract(intent, player_input);
         }
 
-        // 6. Handle NPC interaction
+        // 6. Handle NPC interaction (now async with decision engine)
         if (intent.type === 'talk') {
-            return this.handleTalk(intent, player_input);
+            return await this.handleTalk(intent, player_input);
         }
 
         // 7. Handle combat initiation
@@ -84,13 +84,13 @@ export class GameStateMachine {
         // Phase 2: Use LLM for intent classification
         const keywords = {
             move: ['去', '走', '到', '前往', 'enter', 'go to', 'move to', 'move'],
-            talk: ['说', '问', 'talk', 'ask', 'speak', 'tell', 'chat', 'conversation'],
-            inspect: ['看', '检查', 'inspect', 'check', 'look', 'examine', '查看'],
-            interact: ['拿', '取', '拾', '读', '打开', '翻', 'search', 'pick', 'take', 'open', 'read', 'search', 'touch', 'use'],
-            attack: ['攻击', '打', 'attack', 'fight', 'hit', 'strike', 'shoot', 'stab'],
+            talk: ['说', '问', 'talk', 'ask', 'speak', 'tell', 'chat', 'conversation', '对话'],
+            inspect: ['看', '检查', 'inspect', 'check', 'look', 'examine', '查看', '观察'],
+            interact: ['拿', '取', '拾', '读', '打开', '翻', 'search', 'pick', 'take', 'open', 'read', 'search', 'touch', 'use', '搜索'],
+            attack: ['攻击', '打', 'attack', 'fight', 'hit', 'strike', 'shoot', 'stab', '射击'],
             use: ['用', '使用', 'use', 'activate', 'cast', 'invoke'],
             flee: ['跑', '逃跑', 'flee', 'run', 'escape', 'retreat'],
-            dice_check: ['检定', '骰', 'check', 'roll', '检定', 'dice', 'test']
+            dice_check: ['检定', '骰', 'check', 'roll', 'dice', 'test']
         };
 
         const inputLower = (input || '').toLowerCase();
@@ -237,9 +237,11 @@ export class GameStateMachine {
         if (!this.currentScene.exits) return null;
 
         return this.currentScene.exits.find(exit => {
+            // Check direct match on target or label
+            if (exit.target === intent || exit.label === intent) return true;
             // Check condition
             if (exit.condition === 'always') return true;
-            if (typeof exit.condition === 'object') {
+            if (exit.condition && typeof exit.condition === 'object') {
                 return this.evaluateCondition(exit.condition);
             }
             // Check keyword match in input
@@ -327,8 +329,16 @@ export class GameStateMachine {
         // Apply item effects
         if (matchedItem.effects) {
             for (const effect of matchedItem.effects) {
-                const parsed = this.parseEffectString(effect);
+                let parsed;
+                if (typeof effect === 'string') {
+                    parsed = this.parseEffectString(effect);
+                } else if (typeof effect === 'object' && effect !== null) {
+                    parsed = effect;
+                }
                 if (parsed) {
+                    if (parsed.type === 'dice_check') {
+                        return this.handleDiceCheckInteraction(parsed, input);
+                    }
                     this.applyEffect(parsed);
                     effects.push(parsed);
                 }
@@ -492,13 +502,13 @@ export class GameStateMachine {
     }
 
     /**
-     * Handle NPC talk interaction
+     * Handle NPC talk interaction — now with NPC decision engine
      * @param {object} intent - Player intent
      * @param {string} input - Raw input for NPC matching
-     * @returns {object} Talk interaction result
+     * @returns {Promise<object>} Talk interaction result
      */
-    handleTalk(intent, input = '') {
-        const npcs = this.currentScene.npcs_present || [];
+    async handleTalk(intent, input = '') {
+        const npcs = this.currentScene.npcs || [];
         if (npcs.length === 0) {
             return {
                 type: 'interaction',
@@ -528,15 +538,41 @@ export class GameStateMachine {
         }
 
         if (matchedNPC) {
+            // --- NPC Decision Engine integration ---
+            const { NPCDecisionEngine } = await import('./npc-decision.js');
+            const engine = new NPCDecisionEngine(this.campaign, matchedNPC.id);
+            
+            const decision = await engine.decide({
+                type: 'player_talk',
+                player_input: input
+            });
+
+            const dialogueResult = await engine.generateDialogue(
+                `Player says: "${input}"`,
+                decision.mood,
+                decision.dialogue_topic
+            );
+
+            // Update NPC state based on interaction outcome
+            engine.updateState(decision, {
+                trust_delta: (decision.mood === 'friendly' || decision.mood === 'grateful' || decision.action === 'talk') ? 5 : 0,
+                fear_delta: (decision.mood === 'terrified' || decision.mood === 'scared') ? 5 : 0
+            });
+
             return {
                 type: 'interaction',
                 interaction_type: 'talk',
                 npc_id: matchedNPC.id,
                 scene: this.currentScene.id,
-                narration: `${matchedNPC.name}看着你，${matchedNPC.first_mes || '沉默不语。'}`,
+                narration: `${matchedNPC.name}：${dialogueResult.dialogue}`,
+                npc_decision: {
+                    action: decision.action,
+                    mood: decision.mood,
+                    confidence: decision.confidence
+                },
                 available_actions: [
                     ...this.getAvailableActions(),
-                    { type: 'ask', target: matchedNPC.id, label: `询问${matchedNPC.name}` }
+                    { type: 'ask', target: matchedNPC.id, label: `继续询问${matchedNPC.name}` }
                 ]
             };
         }
@@ -545,7 +581,7 @@ export class GameStateMachine {
             type: 'interaction',
             scene: this.currentScene.id,
             narration: '你想和谁交谈？',
-            available_actions: this.currentScene.npcs_present?.map(id => {
+            available_actions: npcs.map(id => {
                 const npc = this.module.npcs?.[id];
                 return {
                     type: 'talk_to',
@@ -650,19 +686,19 @@ export class GameStateMachine {
         // Exits
         if (this.currentScene.exits) {
             this.currentScene.exits.forEach(e => {
-                if (e.condition === 'always' || this.evaluateCondition(e.condition)) {
+                if (e.condition === 'always' || (e.condition && this.evaluateCondition(e.condition))) {
                     actions.push({
                         type: 'move',
-                        target: e.target_scene,
-                        label: e.description
+                        target: e.target,
+                        label: e.label
                     });
                 }
             });
         }
 
         // NPCs
-        if (this.currentScene.npcs_present?.length > 0) {
-            this.currentScene.npcs_present.forEach(npcId => {
+        if (this.currentScene.npcs?.length > 0) {
+            this.currentScene.npcs.forEach(npcId => {
                 const npc = this.module.npcs?.[npcId];
                 actions.push({
                     type: 'talk',
