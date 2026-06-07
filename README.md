@@ -69,6 +69,77 @@ sillytavern-ai-gm/
         └── prompt-builder.js  # LLM prompt construction
 ```
 
+## Development
+
+### Quick Setup
+
+```bash
+cd plugin
+npm install
+npm test        # Run all tests
+npm run lint    # Check code style
+npm run check   # Syntax check all files
+```
+
+### Dev Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| `test` | `npm test` | Run all 29 tests |
+| `test:dice` | `npm run test:dice` | Dice system tests |
+| `lint` | `npm run lint` | ESLint check |
+| `lint:fix` | `npm run lint:fix` | Auto-fix ESLint issues |
+| `format` | `npm run format` | Prettier format all files |
+| `check` | `npm run check` | Node syntax check |
+| `dev` | `npm run dev` | Hot reload dev mode (Node 20+) |
+| `dev:mock` | `npm run dev:mock` | Dev mode with mock data |
+
+### Mock Development Mode
+
+Run without SillyTavern backend:
+
+```bash
+MOCK_MODE=true npm run dev
+```
+
+This loads mock campaign/module data for isolated frontend/backend testing.
+
+### Code Style
+
+- ESM modules (`"type": "module"`)
+- JSDoc comments for all public functions
+- Single-purpose commits with clear messages
+- `try/catch` + error logging for all async operations
+
+### Architecture
+
+```
+plugin/
+├── index.js              # Express routes & API
+├── engine/               # Core game engines
+│   ├── dice.js           # Dice roller (cached parsing)
+│   ├── rule-engine.js    # CoC/D&D rules adjudication
+│   ├── state-machine.js  # Scene transitions & actions
+│   ├── combat-tracker.js # Turn-based combat
+│   ├── npc-decision.js   # NPC AI behavior
+│   └── module-parser.js  # JSON/Markdown module loading
+├── storage/
+│   └── campaign.js       # Save/load persistence
+├── utils/
+│   ├── prompt-builder.js # LLM prompt construction
+│   └── sanitize.js       # Input validation & XSS prevention
+│   └── dev-mode.js       # Mock data & hot reload helpers
+└── test/
+    └── index.js          # Test suite (29 assertions)
+```
+
+### Adding a New Effect Type
+
+1. Define in `docs/module-format.md` Effect Types table
+2. Implement in `engine/state-machine.js` `_applyEffect()`
+3. Add test in `test/index.js`
+4. Update test module JSON if needed
+
 ## Development Roadmap
 
 | Phase | Status | Features |
