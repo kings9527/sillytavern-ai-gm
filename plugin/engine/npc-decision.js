@@ -186,6 +186,15 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
   }
 
   /**
+   * Public API: Build context for external callers (tests, plugins)
+   * @param {string} situation - Situation description
+   * @returns {Object} Rich context object
+   */
+  buildContext(situation) {
+    return this._buildContext(situation);
+  }
+
+  /**
    * Get available actions based on NPC role and state
    * @private
    */
