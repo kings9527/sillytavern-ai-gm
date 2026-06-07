@@ -12,8 +12,8 @@
     "test:state": "node test/index.js --grep State",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\"",
-    "format:check": "prettier --check \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\"",
+    "format": "prettier --write \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\" --no-error-on-unmatched-pattern",
+    "format:check": "prettier --check \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\" --no-error-on-unmatched-pattern",
     "check": "node --check index.js && node --check engine/*.js && node --check utils/*.js && node --check storage/*.js",
     "dev": "node --watch index.js",
     "dev:mock": "MOCK_MODE=true node --watch index.js"
