@@ -1,7 +1,7 @@
 /**
  * AI-GM Plugin Contracts
  * Interface definitions for all engine modules
- * 
+ *
  * @module contracts
  * @version 0.2.0
  */
@@ -40,55 +40,55 @@
 
 /**
  * NPC Decision Engine Interface
- * 
+ *
  * Must be implemented by: plugin/engine/npc-decision.js
  * Consumed by: plugin/engine/state-machine.js (handleTalk, handleCombatInitiation)
- * 
+ *
  * Contract Rules:
  * 1. All decisions must be deterministic given identical {npcState, situation, campaignState}
  * 2. Confidence > 0.85 triggers immediate execution (no LLM fallback)
  * 3. Confidence < 0.3 always falls back to LLM (Phase 2)
  * 4. Attitude transitions must be logged and persisted to npcState
  * 5. Death check (current_hp <= 0) must return { action: 'dead', confidence: 1.0 } immediately
- * 
+ *
  * @class NPCDecisionEngine
  */
 export class NPCDecisionEngineContract {
-    /**
-     * Initialize engine with campaign context
-     * @param {Object} campaign — Full campaign state
-     * @param {string} npcId — NPC ID to control
-     * @returns {NPCDecisionEngine}
-     */
-    constructor(campaign, npcId) {}
+  /**
+   * Initialize engine with campaign context
+   * @param {Object} campaign — Full campaign state
+   * @param {string} npcId — NPC ID to control
+   * @returns {NPCDecisionEngine}
+   */
+  constructor(campaign, npcId) {}
 
-    /**
-     * Primary decision entry point
-     * @param {Object} situation — Current situation context
-     * @param {string} situation.type — 'scene_entry' | 'player_talk' | 'player_attack' | 'player_flee' | 'player_inspect' | 'combat_turn' | 'event_triggered' | 'idle'
-     * @param {string} [situation.player_input] — Raw player input text
-     * @param {Object} [situation.combat_state] — Current combat state (if in combat)
-     * @param {number} [situation.threat_level] — 0-100, calculated from player actions
-     * @returns {Promise<NPCDecision>}
-     */
-    async decide(situation) {}
+  /**
+   * Primary decision entry point
+   * @param {Object} situation — Current situation context
+   * @param {string} situation.type — 'scene_entry' | 'player_talk' | 'player_attack' | 'player_flee' | 'player_inspect' | 'combat_turn' | 'event_triggered' | 'idle'
+   * @param {string} [situation.player_input] — Raw player input text
+   * @param {Object} [situation.combat_state] — Current combat state (if in combat)
+   * @param {number} [situation.threat_level] — 0-100, calculated from player actions
+   * @returns {Promise<NPCDecision>}
+   */
+  async decide(situation) {}
 
-    /**
-     * Generate dialogue for an NPC (MVP: template-based, Phase 2: LLM)
-     * @param {string} contextSummary — Brief context description
-     * @param {string} mood — From decision.mood
-     * @param {string} [topic] — Suggested dialogue topic
-     * @returns {Promise<Object>} { dialogue: string, actions: NPCDecision[] }
-     */
-    async generateDialogue(contextSummary, mood, topic) {}
+  /**
+   * Generate dialogue for an NPC (MVP: template-based, Phase 2: LLM)
+   * @param {string} contextSummary — Brief context description
+   * @param {string} mood — From decision.mood
+   * @param {string} [topic] — Suggested dialogue topic
+   * @returns {Promise<Object>} { dialogue: string, actions: NPCDecision[] }
+   */
+  async generateDialogue(contextSummary, mood, topic) {}
 
-    /**
-     * Update NPC state after a decision (trust/fear/suspicion changes)
-     * @param {NPCDecision} decision — The decision that was executed
-     * @param {Object} outcome — Result of the decision (player response, damage dealt, etc.)
-     * @returns {NPCState} Updated state
-     */
-    updateState(decision, outcome) {}
+  /**
+   * Update NPC state after a decision (trust/fear/suspicion changes)
+   * @param {NPCDecision} decision — The decision that was executed
+   * @param {Object} outcome — Result of the decision (player response, damage dealt, etc.)
+   * @returns {NPCState} Updated state
+   */
+  updateState(decision, outcome) {}
 }
 
 // ==================== Event Bus Contract ====================
@@ -103,10 +103,10 @@ export class NPCDecisionEngineContract {
  */
 
 export class EventBusContract {
-    constructor() {}
-    emit(type, payload, source) {}
-    on(type, handler) {}
-    off(type, handler) {}
+  constructor() {}
+  emit(type, payload, source) {}
+  on(type, handler) {}
+  off(type, handler) {}
 }
 
 // ==================== Validator Contract ====================
@@ -119,14 +119,14 @@ export class EventBusContract {
  */
 
 export class ValidatorContract {
-    validateAction(action) {}
-    validateNPCState(state) {}
-    validateScene(scene) {}
-    validateCombatState(state) {}
+  validateAction(action) {}
+  validateNPCState(state) {}
+  validateScene(scene) {}
+  validateCombatState(state) {}
 }
 
 export default {
-    NPCDecisionEngineContract,
-    EventBusContract,
-    ValidatorContract
+  NPCDecisionEngineContract,
+  EventBusContract,
+  ValidatorContract,
 };

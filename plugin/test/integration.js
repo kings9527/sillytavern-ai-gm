@@ -56,9 +56,7 @@ const testModule = {
       hp: 10,
       stats: { str: 55, con: 50, dex: 50, int: 40, pow: 60, edu: 30 },
       dialogue: { default: '...你不该来这里。' },
-      secrets: [
-        { keyword: '邪教', reveal_text: '“你知道得太多了……”', clue_id: 'cult_knowledge' }
-      ]
+      secrets: [{ keyword: '邪教', reveal_text: '“你知道得太多了……”', clue_id: 'cult_knowledge' }],
     },
   },
   items: {
@@ -81,10 +79,12 @@ const testCampaign = {
   module_id: 'arkham-night',
   player: {
     name: '测试调查员',
-    hp: 12, max_hp: 12,
-    sanity: 60, max_sanity: 60,
+    hp: 12,
+    max_hp: 12,
+    sanity: 60,
+    max_sanity: 60,
     stats: { str: 50, con: 50, dex: 70, int: 60, pow: 50, edu: 70, siz: 60, app: 60 },
-    skills: { '图书馆使用': 25, '侦查': 40, '聆听': 30, '格斗': 50, '射击': 45, '闪避': 40 },
+    skills: { 图书馆使用: 25, 侦查: 40, 聆听: 30, 格斗: 50, 射击: 45, 闪避: 40 },
     inventory: ['手电筒', '笔记本', '手枪', '急救包'],
   },
   current_scene: 'entrance',
@@ -96,7 +96,8 @@ const testCampaign = {
   module: testModule,
 };
 
-let pass = 0, fail = 0;
+let pass = 0,
+  fail = 0;
 
 function assert(condition, msg) {
   if (!condition) throw new Error(msg);
@@ -139,19 +140,34 @@ async function runTests() {
   // Step 3: NPC interaction
   console.log('\nStep 3: NPC Interaction');
   await step('Talk to guard', async () => {
-    const result = await state.processAction({ action_type: 'interact', player_input: '和警卫对话', action_data: { target: 'guard', action: 'talk' } });
+    const result = await state.processAction({
+      action_type: 'interact',
+      player_input: '和警卫对话',
+      action_data: { target: 'guard', action: 'talk' },
+    });
     assert(result.narration, 'Should have dialogue response');
-    assert(result.narration.includes('警卫') || result.narration.includes('晚上好'), 'Should have guard dialogue');
+    assert(
+      result.narration.includes('警卫') || result.narration.includes('晚上好'),
+      'Should have guard dialogue',
+    );
   });
   await step('Inspect guard', async () => {
-    const result = await state.processAction({ action_type: 'interact', player_input: '观察警卫', action_data: { target: 'guard', action: 'inspect' } });
+    const result = await state.processAction({
+      action_type: 'interact',
+      player_input: '观察警卫',
+      action_data: { target: 'guard', action: 'inspect' },
+    });
     assert(result.narration, 'Should have inspect response');
   });
 
   // Step 4: Move to library
   console.log('\nStep 4: Scene Transition');
   await step('Move to library', async () => {
-    const result = await state.processAction({ action_type: 'move', player_input: '去图书馆', action_data: { direction: 'library' } });
+    const result = await state.processAction({
+      action_type: 'move',
+      player_input: '去图书馆',
+      action_data: { direction: 'library' },
+    });
     assert(result.to === 'library', 'Should be in library');
     assert(testCampaign.current_scene === 'library', 'Campaign updated');
   });
@@ -163,7 +179,11 @@ async function runTests() {
   // Step 5: Library skill check
   console.log('\nStep 5: Skill Check (Library Use)');
   await step('Search with library_use', async () => {
-    const result = await state.processAction({ action_type: 'interact', player_input: '搜索书架', action_data: { target: 'bookshelf', action: 'search' } });
+    const result = await state.processAction({
+      action_type: 'interact',
+      player_input: '搜索书架',
+      action_data: { target: 'bookshelf', action: 'search' },
+    });
     assert(result.type === 'dice_check', 'Should trigger dice check');
     assert(result.skill === '图书馆使用', 'Should be library use');
   });
@@ -171,7 +191,11 @@ async function runTests() {
   // Step 6: Move to basement
   console.log('\nStep 6: Basement Combat');
   await step('Move to basement', async () => {
-    const result = await state.processAction({ action_type: 'move', player_input: '去地下室', action_data: { direction: 'basement' } });
+    const result = await state.processAction({
+      action_type: 'move',
+      player_input: '去地下室',
+      action_data: { direction: 'basement' },
+    });
     assert(result.to === 'basement', 'Should be in basement');
     assert(result.combat, 'Combat should be triggered');
     assert(result.combat.enemies.length > 0, 'Should have enemies');
@@ -184,7 +208,7 @@ async function runTests() {
     try {
       combat = new CombatTracker(testCampaign);
       console.log('CombatTracker created, campaign combat_state:', testCampaign.combat_state);
-      const enemies = testModule.scenes.basement.combat.enemies.map(id => ({
+      const enemies = testModule.scenes.basement.combat.enemies.map((id) => ({
         id,
         ...testModule.npcs[id],
         hp: testModule.npcs[id].hp,
@@ -193,7 +217,10 @@ async function runTests() {
       console.log('Enemies:', enemies);
       combat.initCombat(enemies);
       console.log('Combat init success. Initiative:', combat.state.initiative);
-      assert(combat.state && combat.state.initiative && combat.state.initiative.length > 0, 'Should have initiative order');
+      assert(
+        combat.state && combat.state.initiative && combat.state.initiative.length > 0,
+        'Should have initiative order',
+      );
     } catch (e) {
       console.error('Combat init error:', e.message);
       console.error(e.stack);
@@ -201,20 +228,37 @@ async function runTests() {
     }
   });
   await step('Player turn attack', async () => {
-    const attacker = combat.state.initiative.find(i => i.entity_id === combat.state.current_turn);
+    const attacker = combat.state.initiative.find((i) => i.entity_id === combat.state.current_turn);
     if (attacker.entity_id === 'player_1') {
-      const result = await combat.resolveAttack({ attacker_id: 'player', target_id: 'cultist', weapon: 'pistol' });
+      const result = await combat.resolveAttack({
+        attacker_id: 'player',
+        target_id: 'cultist',
+        weapon: 'pistol',
+      });
       assert(result.damage >= 0, 'Should have damage value');
     }
   });
   await step('Combat ends when enemy HP reaches 0', async () => {
     let safety = 0;
-    while (combat.state.initiative.filter(i => i.type === 'enemy' && combat.campaign.npcs_state[i.entity_id]?.current_hp > 0).length > 0 && safety < 20) {
-      const actor = combat.state.initiative.find(i => i.entity_id === combat.state.current_turn);
+    while (
+      combat.state.initiative.filter(
+        (i) => i.type === 'enemy' && combat.campaign.npcs_state[i.entity_id]?.current_hp > 0,
+      ).length > 0 &&
+      safety < 20
+    ) {
+      const actor = combat.state.initiative.find((i) => i.entity_id === combat.state.current_turn);
       if (actor.entity_id === 'player_1') {
-        await combat.resolveAttack({ attacker_id: 'player', target_id: 'cultist', weapon: 'pistol' });
+        await combat.resolveAttack({
+          attacker_id: 'player',
+          target_id: 'cultist',
+          weapon: 'pistol',
+        });
       } else {
-        await combat.resolveAttack({ attacker_id: 'cultist', target_id: 'player', weapon: 'dagger' });
+        await combat.resolveAttack({
+          attacker_id: 'cultist',
+          target_id: 'player',
+          weapon: 'dagger',
+        });
       }
       combat.advanceTurn();
       safety++;
@@ -241,25 +285,54 @@ async function runTests() {
   await step('NPC state initialized after talk', async () => {
     assert(testCampaign.npcs_state?.guard, 'Guard NPC state should be created');
     assert(testCampaign.npcs_state.guard.trust >= 30, 'Guard trust should be at least 30');
-    assert(testCampaign.npcs_state.guard.attitude === 'neutral', 'Initial attitude should be neutral');
+    assert(
+      testCampaign.npcs_state.guard.attitude === 'neutral',
+      'Initial attitude should be neutral',
+    );
   });
 
   await step('NPC attitude shifts on friendly interaction', async () => {
     // Move back to entrance to talk to guard again
-    const moveResult = await state.processAction({ action_type: 'move', player_input: '回正门', action_data: { direction: 'entrance' } });
+    const moveResult = await state.processAction({
+      action_type: 'move',
+      player_input: '回正门',
+      action_data: { direction: 'entrance' },
+    });
     assert(moveResult.to === 'entrance', 'Should be back at entrance');
-    const result = await state.processAction({ action_type: 'interact', player_input: '和警卫说谢谢', action_data: { target: 'guard', action: 'talk' } });
+    const result = await state.processAction({
+      action_type: 'interact',
+      player_input: '和警卫说谢谢',
+      action_data: { target: 'guard', action: 'talk' },
+    });
     assert(result.npc_decision, 'Should have npc_decision field');
-    assert(result.npc_decision.mood === 'neutral' || result.npc_decision.mood === 'friendly', 'Guard should be neutral or friendly');
+    assert(
+      result.npc_decision.mood === 'neutral' || result.npc_decision.mood === 'friendly',
+      'Guard should be neutral or friendly',
+    );
     assert(testCampaign.npcs_state.guard.trust > 30, 'Trust should increase after friendly talk');
   });
 
   await step('Hostile NPC (cultist) evades on cult topic', async () => {
     // From entrance, need to go library -> basement
-    await state.processAction({ action_type: 'move', player_input: '去图书馆', action_data: { direction: 'library' } });
-    await state.processAction({ action_type: 'move', player_input: '去地下室', action_data: { direction: 'basement' } });
-    const result = await state.processAction({ action_type: 'interact', player_input: '问邪教徒关于邪教', action_data: { target: 'cultist', action: 'talk' } });
-    assert(result.npc_decision.mood === 'suspicious' || result.npc_decision.mood === 'hostile', 'Cultist should react to cult topic');
+    await state.processAction({
+      action_type: 'move',
+      player_input: '去图书馆',
+      action_data: { direction: 'library' },
+    });
+    await state.processAction({
+      action_type: 'move',
+      player_input: '去地下室',
+      action_data: { direction: 'basement' },
+    });
+    const result = await state.processAction({
+      action_type: 'interact',
+      player_input: '问邪教徒关于邪教',
+      action_data: { target: 'cultist', action: 'talk' },
+    });
+    assert(
+      result.npc_decision.mood === 'suspicious' || result.npc_decision.mood === 'hostile',
+      'Cultist should react to cult topic',
+    );
     assert(testCampaign.npcs_state?.cultist, 'Cultist NPC state should be created');
   });
 
@@ -268,7 +341,10 @@ async function runTests() {
     const cultist = testCampaign.npcs_state?.cultist;
     assert(guard?.is_alive === true, 'Guard should be alive');
     assert(cultist?.is_alive === true, 'Cultist should be alive');
-    assert(cultist?.attitude === 'hostile' || cultist?.attitude?.startsWith('hostile'), 'Cultist should be hostile');
+    assert(
+      cultist?.attitude === 'hostile' || cultist?.attitude?.startsWith('hostile'),
+      'Cultist should be hostile',
+    );
   });
 
   // Summary

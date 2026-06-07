@@ -1,7 +1,7 @@
 /**
  * Input Sanitization Utilities
  * Prevents XSS and sanitizes user input for safe display.
- * 
+ *
  * @version 0.1.0
  */
 
@@ -11,16 +11,16 @@
  * @returns {string} HTML-escaped text
  */
 export function escapeHtml(text) {
-    if (typeof text !== 'string') return String(text);
-    const div = { innerHTML: '' };
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
+  if (typeof text !== 'string') return String(text);
+  const div = { innerHTML: '' };
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
 /**
@@ -31,21 +31,21 @@ export function escapeHtml(text) {
  * @returns {string} Sanitized input
  */
 export function sanitizeInput(input, maxLength = 1000) {
-    if (!input || typeof input !== 'string') return '';
-    
-    // Remove control characters except newlines
-    // eslint-disable-next-line no-control-regex
-    let sanitized = input.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-    
-    // Trim whitespace
-    sanitized = sanitized.trim();
-    
-    // Limit length
-    if (sanitized.length > maxLength) {
-        sanitized = sanitized.substring(0, maxLength) + '...';
-    }
-    
-    return sanitized;
+  if (!input || typeof input !== 'string') return '';
+
+  // Remove control characters except newlines
+  // eslint-disable-next-line no-control-regex
+  let sanitized = input.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+
+  // Trim whitespace
+  sanitized = sanitized.trim();
+
+  // Limit length
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength) + '...';
+  }
+
+  return sanitized;
 }
 
 /**
@@ -55,21 +55,21 @@ export function sanitizeInput(input, maxLength = 1000) {
  * @returns {string} Sanitized narration
  */
 export function sanitizeNarration(text) {
-    if (typeof text !== 'string') return String(text);
-    
-    // Remove script tags and their content
-    let sanitized = text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, '');
-    
-    // Remove event handlers (on*="...")
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-    
-    // Remove javascript: URLs
-    sanitized = sanitized.replace(/javascript:/gi, '');
-    
-    // Remove data URIs that could execute JS
-    sanitized = sanitized.replace(/data:text\/html/gi, '');
-    
-    return sanitized;
+  if (typeof text !== 'string') return String(text);
+
+  // Remove script tags and their content
+  let sanitized = text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, '');
+
+  // Remove event handlers (on*="...")
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+
+  // Remove javascript: URLs
+  sanitized = sanitized.replace(/javascript:/gi, '');
+
+  // Remove data URIs that could execute JS
+  sanitized = sanitized.replace(/data:text\/html/gi, '');
+
+  return sanitized;
 }
 
 /**
@@ -78,8 +78,8 @@ export function sanitizeNarration(text) {
  * @returns {boolean} True if valid
  */
 export function isValidCampaignId(id) {
-    if (!id || typeof id !== 'string') return false;
-    return /^campaign_\d+_[a-z0-9]+$/.test(id);
+  if (!id || typeof id !== 'string') return false;
+  return /^campaign_\d+_[a-z0-9]+$/.test(id);
 }
 
 /**
@@ -88,8 +88,8 @@ export function isValidCampaignId(id) {
  * @returns {boolean} True if valid format
  */
 export function isValidDiceExpression(expression) {
-    if (!expression || typeof expression !== 'string') return false;
-    return /^[\d\s+dD+-]+$/.test(expression.trim());
+  if (!expression || typeof expression !== 'string') return false;
+  return /^[\d\s+dD+-]+$/.test(expression.trim());
 }
 
 /**
@@ -98,28 +98,28 @@ export function isValidDiceExpression(expression) {
  * @returns {{valid: boolean, errors: string[]}} Validation result
  */
 export function validateModule(module) {
-    const errors = [];
-    
-    if (!module || typeof module !== 'object') {
-        return { valid: false, errors: ['Module must be an object'] };
+  const errors = [];
+
+  if (!module || typeof module !== 'object') {
+    return { valid: false, errors: ['Module must be an object'] };
+  }
+
+  if (!module.id) errors.push('Module missing required field: id');
+  if (!module.name) errors.push('Module missing required field: name');
+  if (!module.system) errors.push('Module missing required field: system');
+  if (!module.start_scene) errors.push('Module missing required field: start_scene');
+  if (!module.scenes || Object.keys(module.scenes).length === 0) {
+    errors.push('Module must have at least one scene');
+  }
+
+  // Validate scenes
+  if (module.scenes) {
+    for (const [sceneId, scene] of Object.entries(module.scenes)) {
+      if (!scene.id) errors.push(`Scene ${sceneId} missing id`);
+      if (!scene.title) errors.push(`Scene ${sceneId} missing title`);
+      if (!scene.description) errors.push(`Scene ${sceneId} missing description`);
     }
-    
-    if (!module.id) errors.push('Module missing required field: id');
-    if (!module.name) errors.push('Module missing required field: name');
-    if (!module.system) errors.push('Module missing required field: system');
-    if (!module.start_scene) errors.push('Module missing required field: start_scene');
-    if (!module.scenes || Object.keys(module.scenes).length === 0) {
-        errors.push('Module must have at least one scene');
-    }
-    
-    // Validate scenes
-    if (module.scenes) {
-        for (const [sceneId, scene] of Object.entries(module.scenes)) {
-            if (!scene.id) errors.push(`Scene ${sceneId} missing id`);
-            if (!scene.title) errors.push(`Scene ${sceneId} missing title`);
-            if (!scene.description) errors.push(`Scene ${sceneId} missing description`);
-        }
-    }
-    
-    return { valid: errors.length === 0, errors };
+  }
+
+  return { valid: errors.length === 0, errors };
 }

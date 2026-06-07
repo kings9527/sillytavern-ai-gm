@@ -1,7 +1,7 @@
 /**
  * Development utilities for AI-GM plugin
  * Hot reload, mock data, and dev helpers
- * 
+ *
  * @version 0.1.0
  */
 
@@ -26,7 +26,7 @@ export const MOCK_CAMPAIGN = {
     sanity: 60,
     max_sanity: 60,
     stats: { str: 50, con: 50, dex: 70, int: 60, pow: 50, edu: 70, siz: 60, app: 60 },
-    skills: { '图书馆使用': 25, '侦查': 40, '聆听': 30, '格斗': 50, '射击': 45, '闪避': 40 },
+    skills: { 图书馆使用: 25, 侦查: 40, 聆听: 30, 格斗: 50, 射击: 45, 闪避: 40 },
     inventory: ['手电筒', '笔记本', '手枪', '急救包'],
   },
   current_scene: 'library',
