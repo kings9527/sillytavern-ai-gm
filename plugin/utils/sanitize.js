@@ -34,6 +34,7 @@ export function sanitizeInput(input, maxLength = 1000) {
     if (!input || typeof input !== 'string') return '';
     
     // Remove control characters except newlines
+    // eslint-disable-next-line no-control-regex
     let sanitized = input.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
     
     // Trim whitespace
