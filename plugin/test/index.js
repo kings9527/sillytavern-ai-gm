@@ -8,6 +8,7 @@ import { RuleEngine } from '../engine/rule-engine.js';
 import { GameStateMachine } from '../engine/state-machine.js';
 import { CombatTracker } from '../engine/combat-tracker.js';
 import { NPCDecisionEngine } from '../engine/npc-decision.js';
+import { ModuleParser } from '../engine/module-parser.js';
 import {
   sanitizeInput,
   sanitizeNarration,
@@ -228,7 +229,7 @@ test('Attack deals damage', () => {
   const initialHP = combatCampaign.npcs_state.npc1.current_hp;
 
   // Ensure it's player's turn; if not, let enemy act first
-  let state = combat.getState();
+  const state = combat.getState();
   if (state.current_turn !== 'player_1') {
     combat.processAction(state.current_turn, 'move', null, {});
   }
@@ -316,6 +317,149 @@ test('validateModule validates scenes', () => {
     result.errors.some((e) => e.includes('missing title')),
     'Expected scene title error',
   );
+});
+
+// ModuleParser Tests
+console.log('\n--- ModuleParser ---');
+const parser = new ModuleParser('json');
+
+const validModule = {
+  id: 'test-module',
+  name: 'Test Module',
+  version: '1.0.0',
+  system: 'coc7e',
+  start_scene: 'scene1',
+  scenes: {
+    scene1: {
+      id: 'scene1',
+      title: 'Scene 1',
+      description: 'First scene',
+      exits: [{ target: 'scene2', label: 'Go to scene 2' }],
+      npcs: ['npc1'],
+      events: [],
+      combat: { enabled: false },
+    },
+    scene2: {
+      id: 'scene2',
+      title: 'Scene 2',
+      description: 'Second scene',
+      exits: [],
+      npcs: [],
+      events: [],
+      combat: { enabled: false },
+    },
+  },
+  npcs: {
+    npc1: {
+      id: 'npc1',
+      name: 'Test NPC',
+      attitude: 'neutral',
+      hp: 10,
+      stats: { str: 50, con: 50, dex: 50, int: 50, pow: 50, edu: 50, siz: 50, app: 50 },
+    },
+  },
+  items: {},
+  endings: {},
+};
+
+test('Parse valid JSON module', () => {
+  const result = parser.parseJSON(JSON.stringify(validModule));
+  assert(result.id === 'test-module', 'Expected parsed module id');
+  assert(result.name === 'Test Module', 'Expected parsed module name');
+});
+
+test('Validate module with all checks', () => {
+  const result = parser.validate(validModule);
+  assert(result.valid === true, `Expected valid module, got errors: ${result.errors.join(', ')}`);
+  assert(result.errors.length === 0, 'Expected no errors');
+});
+
+test('Validate catches missing required fields', () => {
+  const result = parser.validate({ id: 'bad' });
+  assert(result.valid === false, 'Expected invalid module');
+  assert(result.errors.length > 0, 'Expected errors for missing fields');
+});
+
+test('Validate catches undefined NPC reference', () => {
+  const badModule = JSON.parse(JSON.stringify(validModule));
+  badModule.scenes.scene1.npcs = ['nonexistent_npc'];
+  const result = parser.validate(badModule);
+  assert(result.valid === false, 'Expected invalid due to undefined NPC');
+  assert(
+    result.errors.some((e) => e.includes('nonexistent_npc')),
+    'Expected NPC reference error',
+  );
+});
+
+test('Validate catches undefined exit target', () => {
+  const badModule = JSON.parse(JSON.stringify(validModule));
+  badModule.scenes.scene1.exits = [{ target: 'nonexistent_scene', label: 'Bad exit' }];
+  const result = parser.validate(badModule);
+  assert(result.valid === false, 'Expected invalid due to undefined exit target');
+  assert(
+    result.errors.some((e) => e.includes('nonexistent_scene')),
+    'Expected exit target error',
+  );
+});
+
+test('Validate catches duplicate IDs', () => {
+  const badModule = JSON.parse(JSON.stringify(validModule));
+  badModule.npcs.scene1 = { id: 'scene1', name: 'Duplicate' };
+  const result = parser.validate(badModule);
+  assert(result.valid === false, 'Expected invalid due to duplicate ID');
+  assert(
+    result.errors.some((e) => e.includes('Duplicate')),
+    'Expected duplicate ID error',
+  );
+});
+
+test('Validate detects circular scene path', () => {
+  const cycleModule = JSON.parse(JSON.stringify(validModule));
+  cycleModule.scenes.scene2.exits = [{ target: 'scene1', label: 'Back' }];
+  const result = parser.validate(cycleModule);
+  assert(
+    result.warnings.some((w) => w.includes('Circular')),
+    'Expected circular path warning',
+  );
+});
+
+test('Validate catches invalid SemVer', () => {
+  const badModule = JSON.parse(JSON.stringify(validModule));
+  badModule.version = 'not-semver';
+  const result = parser.validate(badModule);
+  assert(result.valid === false, 'Expected invalid due to bad version');
+  assert(
+    result.errors.some((e) => e.includes('SemVer')),
+    'Expected SemVer error',
+  );
+});
+
+test('Parse Markdown with YAML frontmatter', () => {
+  const mdParser = new ModuleParser('markdown');
+  const md = `---
+id: md-test
+name: Markdown Test
+version: 1.0.0
+system: coc7e
+---
+
+# 场景：图书馆
+**id**: library
+**atmosphere**: quiet
+
+古老的书架排列在两侧...
+
+## 出口
+- [地下室](basement) — 需要: found_key
+
+## NPC
+- [librarian](npcs/librarian.md)
+`;
+  const result = mdParser.parseMarkdown(md);
+  assert(result.id === 'md-test', 'Expected frontmatter id');
+  assert(result.name === 'Markdown Test', 'Expected frontmatter name');
+  assert(result.scenes.library !== undefined, 'Expected library scene');
+  assert(result.scenes.library.title === '图书馆', 'Expected library title');
 });
 
 // Summary
