@@ -208,15 +208,72 @@
 3. ✅ 事件重复触发（Day 3 已修复）
 4. ✅ 输入未消毒（Day 3 已修复）
 
+## Day 2 Engine 完成记录 (续)
+
+### 模组解析器 (module-parser.js)
+- ✅ 完整 JSON 验证：11 项验证规则
+  - 必填字段检查（id, name, version, system, scenes, npcs）
+  - SemVer 版本格式验证
+  - 规则系统类型校验（coc7e/dnd5e/general/custom）
+  - ID 唯一性检查（scene/NPC/item/ending/event 全局去重）
+  - 场景出口目标引用验证（指向存在的场景）
+  - NPC 引用验证（场景中引用的 NPC 必须在 npcs 中定义）
+  - 物品引用验证（场景中引用的物品必须在 items 中定义）
+  - 事件验证（trigger/effects 结构检查）
+  - 循环场景检测（DFS 路径检测，仅警告）
+  - 起始场景存在性检查
+- ✅ Markdown 解析器：YAML frontmatter 提取 + 场景结构解析
+  - 支持 `---` 包裹的 YAML 前置元数据（id/name/version/system）
+  - 场景标题识别（`# 场景：标题` + `**id**: id`）
+  - 描述文本提取（atmosphere 标记后内容）
+  - 出口解析（`[标签](目标)` 格式，支持条件标记）
+  - NPC 引用解析（`[名字](npcs/id.md)` 格式）
+  - 事件解析（`### 事件名` + 触发 + 效果）
+  - 兜底模式：无结构化标记时按 `## 标题` 分块解析
+- ✅ 新增 `getWarnings()` 方法获取解析警告
+- ✅ 测试覆盖：9 项 ModuleParser 专项断言（38/38 全部通过）
+
+## Day 2 完成记录（新）
+
+### 模组解析器
+- ✅ JSON 解析：完整验证 + 错误抛出
+- ✅ Markdown 解析：基础结构提取（非 LLM 依赖）
+- ✅ 验证结果：`{ valid, errors, warnings }` 结构化返回
+- ✅ 测试：JSON 解析、验证规则、Markdown 解析各维度覆盖
+
+## 下一步（Day 3·Guard）
+
+### 测试框架升级
+- [ ] 将轻量断言测试迁移至 Jest 正式框架
+- [ ] 模块级测试拆分（每个 engine 文件独立测试文件）
+
+### 边界修复验证
+- [ ] 场景事件多次触发：确认 `repeatable` 和 `once_per_campaign` 全覆盖
+- [ ] 战斗结束清理：确认 `combat_state` 在战斗结束/逃跑/场景切换时正确清理
+- [ ] 存档恢复：确认 `loadSnapshot()` 恢复后 `combat_state` 完整性
+
+### 类型安全强化
+- [ ] 所有公共方法添加 JSDoc `@param` / `@returns` 类型注解
+- [ ] 新增运行时参数类型检查（防御式编程）
+
+## 已知问题（已解决）
+
+1. ✅ dice.js 内存溢出（Day 3 已修复）
+2. ✅ 存档读取后 combat_state 丢失（Day 3 已修复）
+3. ✅ 事件重复触发（Day 3 已修复）
+4. ✅ 输入未消毒（Day 3 已修复）
+5. ✅ Markdown 模组解析（Day 2 已实现基础版）
+
 ## 技术债务（移至 Phase 2）
 
 - [ ] Jest 正式测试框架（当前为断言测试）
 - [ ] SQLite 持久化（Phase 2）
 - [ ] 接入 SillyTavern LLM 生成（Phase 2）
 - [ ] Winston/Pino 日志系统
-- [ ] Markdown 模组解析器（Phase 2）
+- [ ] Markdown 模组解析器增强（YAML 库替代、更复杂的 Markdown 结构）
+- [ ] 意图解析关键词匹配 → LLM 升级（Phase 2）
 
 ---
 
-*状态更新：2026-06-07 21:00*  
-*Git Commit: c74f4eb - feat(pipeline): Day 4 - ESLint + Prettier + CI + dice cache + dev mode + module docs*
+*状态更新：2026-06-08 21:00*  
+*Git Commit: 5f57837 - feat(parser): Day 2 Engine - complete module parser with full validation + markdown support*
