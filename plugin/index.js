@@ -15,6 +15,7 @@ import { DiceRoller } from './engine/dice.js';
 import { CombatTracker } from './engine/combat-tracker.js';
 import { CampaignStorage } from './storage/campaign.js';
 import { NPCDecisionEngine } from './engine/npc-decision.js';
+import { LLMClient, createLLMClientFromEnv } from './utils/llm-client.js';
 import { PromptBuilder } from './utils/prompt-builder.js';
 
 const router = Router();
@@ -47,6 +48,15 @@ function errorHandler(err, req, res, next) {
     error: err.message || 'Internal server error',
     timestamp: new Date().toISOString(),
   });
+}
+
+// Initialize LLM client (lazy — creates on first use if env vars set)
+let llmClient = null;
+function getLLMClient() {
+  if (!llmClient) {
+    llmClient = createLLMClientFromEnv();
+  }
+  return llmClient;
 }
 
 /**
@@ -177,7 +187,7 @@ router.post(
     }
 
     const module = loadedModules.get(campaign.module_id);
-    const stateMachine = new GameStateMachine(module, campaign);
+    const stateMachine = new GameStateMachine(module, campaign, getLLMClient());
 
     // Handle dice check action type
     if (action_type === 'dice_check') {
@@ -282,7 +292,7 @@ router.post(
     }
 
     const module = loadedModules.get(campaign.module_id);
-    const stateMachine = new GameStateMachine(module, campaign);
+    const stateMachine = new GameStateMachine(module, campaign, getLLMClient());
     const result = await stateMachine.transitionTo(scene_id);
 
     campaign.current_scene = scene_id;
@@ -490,6 +500,83 @@ router.post(
     const saves = storage.getSnapshots(campaign_id);
 
     res.json({ success: true, saves });
+  }),
+);
+
+/**
+ * LLM: Get configuration and stats
+ */
+router.get('/llm/config', (req, res) => {
+  const client = getLLMClient();
+  res.json({
+    success: true,
+    config: {
+      provider: client.config.provider,
+      model: client.config.model,
+      baseUrl: client.config.baseUrl,
+      maxTokens: client.config.maxTokens,
+      temperature: client.config.temperature,
+      timeout: client.config.timeout,
+    },
+    available: client.isAvailable(),
+    stats: client.getStats(),
+  });
+});
+
+/**
+ * LLM: Update configuration
+ */
+router.post(
+  '/llm/config',
+  asyncHandler(async (req, res) => {
+    const { provider, baseUrl, apiKey, model, maxTokens, temperature, timeout } = req.body;
+    const client = getLLMClient();
+
+    client.updateConfig({
+      ...(provider && { provider }),
+      ...(baseUrl && { baseUrl }),
+      ...(apiKey !== undefined && { apiKey }),
+      ...(model && { model }),
+      ...(maxTokens && { maxTokens: parseInt(maxTokens, 10) }),
+      ...(temperature !== undefined && { temperature: parseFloat(temperature) }),
+      ...(timeout && { timeout: parseInt(timeout, 10) }),
+    });
+
+    res.json({
+      success: true,
+      config: {
+        provider: client.config.provider,
+        model: client.config.model,
+        available: client.isAvailable(),
+      },
+    });
+  }),
+);
+
+/**
+ * LLM: Test connection
+ */
+router.post(
+  '/llm/test',
+  asyncHandler(async (req, res) => {
+    const client = getLLMClient();
+    if (!client.isAvailable()) {
+      return res.status(400).json({
+        success: false,
+        error: 'LLM not configured. Please set API key and base URL.',
+      });
+    }
+
+    try {
+      const response = await client.complete(
+        'Say "AI-GM connection test successful" in one sentence.',
+        'You are a helpful assistant.',
+        { maxTokens: 50 },
+      );
+      res.json({ success: true, response });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }),
 );
 

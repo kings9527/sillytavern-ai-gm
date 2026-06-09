@@ -5,10 +5,11 @@
  * @version 0.2.0
  */
 export class GameStateMachine {
-  constructor(module, campaign) {
+  constructor(module, campaign, llmClient = null) {
     this.module = module;
     this.campaign = campaign;
     this.currentScene = module.scenes[campaign.current_scene];
+    this.llmClient = llmClient;
   }
 
   /**
@@ -583,12 +584,13 @@ export class GameStateMachine {
       const decision = await engine.decide({
         type: 'player_talk',
         player_input: input,
-      });
+      }, this.llmClient);
 
       const dialogueResult = await engine.generateDialogue(
         `Player says: "${input}"`,
         decision.mood,
         decision.dialogue_topic,
+        this.llmClient,
       );
 
       // Update NPC state based on interaction outcome

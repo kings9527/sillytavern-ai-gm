@@ -17,7 +17,7 @@ import {
   validateModule,
 } from '../utils/sanitize.js';
 
-// Test data
+import { LLMClient } from '../utils/llm-client.js';
 const testModule = {
   id: 'test_module',
   name: 'Test Module',
@@ -460,6 +460,75 @@ system: coc7e
   assert(result.name === 'Markdown Test', 'Expected frontmatter name');
   assert(result.scenes.library !== undefined, 'Expected library scene');
   assert(result.scenes.library.title === '图书馆', 'Expected library title');
+});
+
+// LLMClient Tests
+console.log('\n--- LLMClient ---');
+const llmClient = new LLMClient({
+  provider: 'openai',
+  baseUrl: 'https://api.openai.com/v1',
+  apiKey: 'test-key',
+  model: 'gpt-4o-mini',
+  maxTokens: 512,
+  temperature: 0.7,
+  timeout: 30000,
+  retries: 2,
+});
+
+test('LLMClient is available with API key', () => {
+  assert(llmClient.isAvailable() === true, 'Expected LLM to be available');
+});
+
+test('LLMClient not available without config', () => {
+  const badClient = new LLMClient({ provider: 'openai', apiKey: '', baseUrl: '' });
+  assert(badClient.isAvailable() === false, 'Expected LLM not available without key');
+});
+
+test('LLMClient stats initial state', () => {
+  const stats = llmClient.getStats();
+  assert(stats.requests === 0, 'Expected 0 requests');
+  assert(stats.errors === 0, 'Expected 0 errors');
+  assert(stats.cacheSize === 0, 'Expected 0 cache size');
+  assert(stats.config.provider === 'openai', 'Expected openai provider');
+});
+
+test('LLMClient updateConfig works', () => {
+  llmClient.updateConfig({ model: 'gpt-4', temperature: 0.5 });
+  assert(llmClient.config.model === 'gpt-4', 'Expected model updated');
+  assert(llmClient.config.temperature === 0.5, 'Expected temperature updated');
+});
+
+test('LLMClient cache key generation', () => {
+  const key1 = llmClient._cacheKey([{ role: 'user', content: 'hello' }], llmClient.config);
+  const key2 = llmClient._cacheKey([{ role: 'user', content: 'hello' }], llmClient.config);
+  assert(key1 === key2, 'Expected same cache key for same input');
+});
+
+test('LLMClient clearCache works', () => {
+  // Manually add a cache entry to test clearing
+  llmClient._cache.set('test-key', { content: 'test' });
+  llmClient.clearCache();
+  assert(llmClient._cache.size === 0, 'Expected cache cleared');
+});
+
+test('LLMClient SillyTavern provider always available', () => {
+  const stClient = new LLMClient({ provider: 'sillytavern' });
+  assert(stClient.isAvailable() === true, 'Expected SillyTavern provider available');
+});
+
+test('LLMClient Ollama provider available with baseUrl', () => {
+  const ollamaClient = new LLMClient({ provider: 'ollama', baseUrl: 'http://localhost:11434' });
+  assert(ollamaClient.isAvailable() === true, 'Expected Ollama available with baseUrl');
+});
+
+test('LLMClient throws when not available', async () => {
+  const badClient = new LLMClient({ provider: 'openai', apiKey: '', baseUrl: '' });
+  try {
+    await badClient.chat([{ role: 'user', content: 'test' }]);
+    assert(false, 'Expected error for unavailable LLM');
+  } catch (error) {
+    assert(error.message.includes('not configured'), 'Expected config error');
+  }
 });
 
 // Summary

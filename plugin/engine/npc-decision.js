@@ -122,7 +122,13 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
    * @param {Object} situation
    * @returns {Promise<NPCDecision>}
    */
-  async decide(situation) {
+  /**
+   * Primary decision entry point
+   * @param {Object} situation
+   * @param {LLMClient} llmClient - Optional LLM client for AI-enhanced decisions
+   * @returns {Promise<NPCDecision>}
+   */
+  async decide(situation, llmClient = null) {
     // 0. Death check — immediate
     if (!this.npcState.is_alive || this.npcState.current_hp <= 0) {
       return {
@@ -150,8 +156,19 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
       return attitudeDecision;
     }
 
-    // 3. Low confidence — LLM fallback (Phase 2)
-    return this._llmFallback(context);
+    // 3. Low confidence — LLM fallback if available
+    if (llmClient && llmClient.isAvailable()) {
+      try {
+        const llmDecision = await this._llmEnhancedDecision(context, llmClient);
+        this._updateAttitudeFromDecision(llmDecision, situation);
+        return llmDecision;
+      } catch (error) {
+        console.warn(`[NPCDecisionEngine] LLM fallback failed for ${this.npcId}:`, error.message);
+      }
+    }
+
+    // 4. Final fallback — default role-based
+    return this._defaultFallback(context);
   }
 
   /**
@@ -526,10 +543,52 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
   }
 
   /**
-   * LLM fallback for complex situations (Phase 2)
+   * LLM-enhanced decision for complex situations
    * @private
    */
-  _llmFallback(context) {
+  async _llmEnhancedDecision(context, llmClient) {
+    const { npc, template, situation, campaign_state } = context;
+    const systemPrompt = `You are an RPG NPC decision engine. Given a character and situation, decide the NPC's action.
+Respond with a JSON object containing: action (string), confidence (0.0-1.0), reasoning (string), mood (string), target_id (string or null).
+Available actions: ${this._getAvailableActions().join(', ')}.
+The NPC is ${template.name || 'Unknown'}, role: ${template.role || 'neutral'}, attitude: ${npc.attitude}.`;
+
+    const prompt = `Situation: ${JSON.stringify(situation)}
+NPC State: HP ${npc.current_hp}/${template.hp || 10}, SAN ${npc.current_san}/${template.sanity || 50}, trust ${npc.trust}, fear ${npc.fear}, suspicion ${npc.suspicion}
+Campaign: ${campaign_state.current_scene}, combat: ${campaign_state.is_combat}, player turn: ${campaign_state.is_player_turn}
+Player: ${campaign_state.player_name}, HP ratio: ${campaign_state.player_hp_ratio.toFixed(2)}, SAN ratio: ${campaign_state.player_san_ratio.toFixed(2)}`;
+
+    try {
+      const result = await llmClient.chatJSON(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        { temperature: 0.3, maxTokens: 256 },
+      );
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        action: result.action || 'talk',
+        confidence: Math.max(0.5, Math.min(1.0, parseFloat(result.confidence) || 0.6)),
+        reasoning: result.reasoning || 'LLM decision',
+        mood: result.mood || 'neutral',
+        target_id: result.target_id || 'player',
+      };
+    } catch (error) {
+      console.warn('[NPCDecisionEngine] LLM decision failed:', error.message);
+      return this._defaultFallback(context);
+    }
+  }
+
+  /**
+   * Default role-based fallback when no LLM or rules match
+   * @private
+   */
+  _defaultFallback(context) {
     const { template, situation } = context;
     let decision = 'talk';
     let mood = 'neutral';
@@ -601,7 +660,79 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
    * @param {string} [topic] — Suggested dialogue topic
    * @returns {Promise<Object>} { dialogue: string, actions: NPCDecision[] }
    */
-  async generateDialogue(contextSummary, mood, topic) {
+  async generateDialogue(contextSummary, mood, topic, llmClient = null) {
+    const template = this.npcTemplate;
+    const npc = this.npcState;
+
+    // Try LLM generation first if available
+    if (llmClient && llmClient.isAvailable()) {
+      try {
+        return await this._generateLLMDialogue(contextSummary, mood, topic, llmClient);
+      } catch (error) {
+        console.warn('[NPCDecisionEngine] LLM dialogue failed for ' + this.npcId + ':', error.message);
+      }
+    }
+
+    // Fallback: template-based dialogue generation
+    return this._generateTemplateDialogue(contextSummary, mood, topic);
+  }
+
+  /**
+   * LLM-enhanced dialogue generation
+   * @private
+   */
+  async _generateLLMDialogue(contextSummary, mood, topic, llmClient) {
+    const template = this.npcTemplate;
+    const npc = this.npcState;
+
+    const systemPrompt = `You are ${template.name || 'an NPC'} in a ${this.campaign.module?.system || 'horror'} RPG. Respond in character. Stay concise (1-2 paragraphs). Never break character. ${template.personality ? `Personality: ${template.personality}` : ''}`;
+
+    const prompt = `${contextSummary}
+
+Your current mood: ${mood}
+Your attitude toward the player: ${npc.attitude}
+Trust level: ${npc.trust}/100
+Fear level: ${npc.fear}/100
+Suspicion: ${npc.suspicion}/100
+${topic ? `Suggested topic: ${topic}` : ''}
+${npc.secrets_revealed.length > 0 ? `Secrets already revealed: ${npc.secrets_revealed.join(', ')}` : ''}
+${npc.known_topics.length > 0 ? `Topics discussed: ${npc.known_topics.join(', ')}` : ''}
+
+Respond with what you say or do.`;
+
+    const response = await llmClient.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.8, maxTokens: 512 },
+    );
+
+    let dialogue = response.content.trim();
+    const actions = [];
+
+    // If a secret was revealed, add a hint action
+    if (topic === 'secret' && template.secrets) {
+      const unrevealed = template.secrets.filter((s) => !npc.secrets_revealed.includes(s.keyword));
+      if (unrevealed.length > 0) {
+        const secret = unrevealed[0];
+        actions.push({
+          action: 'hint',
+          confidence: 0.8,
+          reasoning: 'Secret revealed via LLM dialogue',
+          metadata: { clue_id: secret.clue_id },
+        });
+      }
+    }
+
+    return { dialogue, actions };
+  }
+
+  /**
+   * Template-based dialogue generation (fallback)
+   * @private
+   */
+  _generateTemplateDialogue(contextSummary, mood, topic) {
     const template = this.npcTemplate;
     const npc = this.npcState;
 

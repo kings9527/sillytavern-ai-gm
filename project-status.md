@@ -264,16 +264,97 @@
 4. ✅ 输入未消毒（Day 3 已修复）
 5. ✅ Markdown 模组解析（Day 2 已实现基础版）
 
-## 技术债务（移至 Phase 2）
+## Phase 2 技术债务清偿：LLM 集成层
 
-- [ ] Jest 正式测试框架（当前为断言测试）
-- [ ] SQLite 持久化（Phase 2）
-- [ ] 接入 SillyTavern LLM 生成（Phase 2）
-- [ ] Winston/Pino 日志系统
-- [ ] Markdown 模组解析器增强（YAML 库替代、更复杂的 Markdown 结构）
-- [ ] 意图解析关键词匹配 → LLM 升级（Phase 2）
+**触发日期**: 2026-06-09 (Day 1-4 全部完成，进入 Phase 2)
+**聚焦**: 最高影响力任务 — LLM 集成层（接入 SillyTavern LLM 生成）
+
+### LLM 客户端 (`plugin/utils/llm-client.js`) — 全新基础设施
+- ✅ 统一 LLM 接口：支持 OpenAI / Claude / Ollama / SillyTavern proxy 四种 provider
+- ✅ 可配置参数：provider, baseUrl, apiKey, model, maxTokens, temperature, timeout, retries
+- ✅ 核心方法：`chat()` / `complete()` / `chatJSON()` / `isAvailable()` / `updateConfig()` / `getStats()` / `clearCache()`
+- ✅ 错误处理：超时控制（AbortController）、指数退避重试（2次）、4xx 错误不重试
+- ✅ 响应缓存：LRU 缓存（max 100），相同 prompt 二次调用返回 cached 标记
+- ✅ JSON 输出模式：`chatJSON()` 自动解析 JSON，支持 markdown 代码块提取
+- ✅ 环境变量工厂：`createLLMClientFromEnv()` 从 `AI_GM_LLM_*` 前缀变量读取配置
+- ✅ 测试覆盖：9 项断言全部通过（可用性检测、配置更新、缓存、各 provider 支持）
+
+### NPC 决策引擎增强 (`plugin/engine/npc-decision.js`)
+- ✅ `decide()` 方法签名扩展：`decide(situation, llmClient = null)`
+- ✅ LLM 增强决策层：规则（≥0.85）→ 态度（>0.5）→ LLM 回退（若可用）→ 默认回退
+- ✅ `_llmEnhancedDecision()`：结构化 prompt 生成，JSON 输出格式，自动解析为 NPCDecision
+- ✅ `generateDialogue()` 方法签名扩展：`generateDialogue(contextSummary, mood, topic, llmClient = null)`
+- ✅ `_generateLLMDialogue()`：角色扮演系统 prompt + 状态感知（信任/恐惧/怀疑）+ 秘密/话题追踪
+- ✅ `_generateTemplateDialogue()`：原模板驱动逻辑保留作为 fallback
+- ✅ 错误降级：LLM 调用失败时自动降级到模板驱动，不中断游戏流程
+
+### 状态机集成 (`plugin/engine/state-machine.js`)
+- ✅ 构造函数扩展：`new GameStateMachine(module, campaign, llmClient = null)`
+- ✅ `handleTalk()` 传递 `llmClient` 到 `NPCDecisionEngine.decide()` 和 `generateDialogue()`
+- ✅ 所有状态机实例化点更新：`plugin/index.js` 两处均传入 `getLLMClient()`
+
+### 后端 API 新增 (`plugin/index.js`)
+- ✅ LLM 配置端点：`GET /llm/config` — 返回当前配置（脱敏，不返回 apiKey）+ 可用状态 + 统计
+- ✅ LLM 配置更新：`POST /llm/config` — 动态更新 provider/model/temperature 等参数
+- ✅ LLM 连通性测试：`POST /llm/test` — 发送测试 prompt，返回 LLM 响应
+- ✅ 全局 LLM 客户端：`getLLMClient()` 懒加载单例，首次使用时从环境变量初始化
+
+### 测试验证
+- ✅ 47/47 测试全部通过（新增 9 项 LLMClient 测试，无回归）
+- ✅ `node --check` 语法验证全部通过
+- ✅ 现有功能零破坏：DiceRoller / RuleEngine / GameStateMachine / CombatTracker / NPCDecisionEngine / Sanitize / ModuleParser 全部通过
 
 ---
 
-*状态更新：2026-06-08 21:00*  
-*Git Commit: 5f57837 - feat(parser): Day 2 Engine - complete module parser with full validation + markdown support*
+## 完成度更新
+
+| 模块 | 状态 | 完成度 | 说明 |
+|------|------|--------|------|
+| **前端 Extension** | ✅ Day1 完成 | 65% | Day2 新增：存档槽位UI + 战斗日志 + HP同步 |
+| **后端 Plugin** | ✅ Day2 完成 | 70% | Day2 新增：combat_summary + save/list + 玩家HP同步 |
+| **模组解析器** | ✅ 基础 | 40% | JSON 解析 + Markdown 占位 |
+| **状态机** | ✅ Day2 完成 | 70% | 场景切换 + interact动作 + 事件触发 + 检定联动 + 结局 |
+| **规则引擎** | ✅ Day2 完成 | 70% | d100检定 + DB计算 + 伤害公式 + 最大骰子 + 中文narration |
+| **骰子系统** | ✅ 完成 | 80% | 多面骰 + 表达式 + 历史记录 |
+| **战斗系统** | ✅ Day2 完成 | 70% | 先攻 + 回合 + 攻击结算 + 敌人AI + HP同步 + 战斗日志 |
+| **NPC 决策** | ✅ Phase 2 | 60% | 规则驱动 + LLM 增强回退 + 模板对话 + AI 对话 |
+| **存档系统** | ✅ Day2 完成 | 60% | 5存档位内存存档 + 存档列表 + 日志系统 |
+| **提示词构建** | ✅ 完成 | 70% | GM/NPC/场景/战斗/SAN 提示词 |
+| **LLM 客户端** | ✅ Phase 2 | 90% | 多 provider 支持 + 缓存 + 重试 + 配置端点 |
+| **测试模组** | ✅ 完成 | 100% | 「阿卡姆之夜」5 场景 4 NPC 2 结局 |
+| **限流方案** | ✅ 文档 | 100% | 已写入 docs/rate-limiting.md |
+| **测试框架** | ✅ 新增 | 80% | engine + utils 全模块测试脚本 |
+
+---
+
+## 下一步（Phase 2 续）
+
+### 高优先级
+- [ ] 意图解析 LLM 升级：`state-machine.js` 的 `parseIntent()` 从关键词匹配升级为 LLM-based 分类
+- [ ] 状态机 `handleCombatInitiation()` 传递 `llmClient` 到战斗中的 NPC 决策
+- [ ] 前端 Extension 集成 LLM 配置面板：provider 选择、模型输入、测试按钮
+- [ ] 环境变量文档：`.env.example` 添加 `AI_GM_LLM_*` 配置项
+
+### 中优先级
+- [ ] Jest 正式测试框架（当前为断言测试）
+- [ ] SQLite 持久化（Phase 2）
+- [ ] Winston/Pino 日志系统
+- [ ] Markdown 模组解析器增强（YAML 库替代）
+
+### 低优先级
+- [ ] 骰子解析器缓存优化（已部分实现）
+- [ ] 引擎模块懒加载（减少启动时间）
+
+## 已知问题（已解决）
+
+1. ✅ dice.js 内存溢出（Day 3 已修复）
+2. ✅ 存档读取后 combat_state 丢失（Day 3 已修复）
+3. ✅ 事件重复触发（Day 3 已修复）
+4. ✅ 输入未消毒（Day 3 已修复）
+5. ✅ Markdown 模组解析（Day 2 已实现基础版）
+6. ✅ LLM 客户端语法错误（Day 2 修复：字符串拼接换行符转义问题）
+
+---
+
+*状态更新：2026-06-09 22:50*  
+*Git Commit: [待更新] — feat(llm): Phase 2 LLM integration layer + NPC decision enhancement + config endpoints*
