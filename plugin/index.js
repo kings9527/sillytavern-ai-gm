@@ -316,7 +316,7 @@ router.post(
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
 
-    const combat = new CombatTracker(campaign);
+    const combat = new CombatTracker(campaign, getLLMClient());
     const result = combat.initCombat(enemies);
     campaign.combat_state = combat.getState();
 
@@ -348,7 +348,7 @@ router.post(
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
 
-    const combat = new CombatTracker(campaign);
+    const combat = new CombatTracker(campaign, getLLMClient());
     combat.loadState(campaign.combat_state);
     const result = combat.processAction(actor, action, target || 'player_1', params);
     campaign.combat_state = combat.getState();

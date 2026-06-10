@@ -327,13 +327,15 @@
 
 ---
 
-## 下一步（Phase 2 续）
+## 下一步（Phase 3 Surface）
 
 ### 高优先级
-- [ ] 意图解析 LLM 升级：`state-machine.js` 的 `parseIntent()` 从关键词匹配升级为 LLM-based 分类
-- [ ] 状态机 `handleCombatInitiation()` 传递 `llmClient` 到战斗中的 NPC 决策
+- [ ] 前端 UI 基础框架：`plugin/ui/` 目录结构、主面板、LLM 配置面板、游戏主界面
+- [ ] NPC 状态卡片：`plugin/ui/npc-card.js` — 动态更新 NPC HP/态度
+- [ ] 场景渲染器：`plugin/ui/scene-renderer.js` — 场景描述 + 出口按钮 + 氛围渲染
 - [ ] 前端 Extension 集成 LLM 配置面板：provider 选择、模型输入、测试按钮
-- [ ] 环境变量文档：`.env.example` 添加 `AI_GM_LLM_*` 配置项
+- [ ] 状态机 `handleCombatInitiation()` 传递 `llmClient` 到战斗中的 NPC 决策
+- [ ] 意图解析 LLM 升级：`state-machine.js` 的 `parseIntent()` 从关键词匹配升级为 LLM-based 分类
 
 ### 中优先级
 - [ ] Jest 正式测试框架（当前为断言测试）
@@ -344,6 +346,9 @@
 ### 低优先级
 - [ ] 骰子解析器缓存优化（已部分实现）
 - [ ] 引擎模块懒加载（减少启动时间）
+
+### 用户手册
+- [ ] 用户使用说明书：`docs/user-manual.md` — 安装指南、快速开始、界面说明、模组制作、FAQ
 
 ## 已知问题（已解决）
 

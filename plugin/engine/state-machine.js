@@ -67,7 +67,7 @@ export class GameStateMachine {
 
     // 7. Handle combat initiation
     if (intent.type === 'attack') {
-      return this.handleCombatInitiation(intent, player_input);
+      return await this.handleCombatInitiation(intent, player_input);
     }
 
     // 8. Default: scene interaction
@@ -80,9 +80,15 @@ export class GameStateMachine {
    * @param {string} actionType - Explicit action type if provided
    * @returns {Promise<object>} Parsed intent
    */
+  /**
+   * Parse player intent from input text
+   * Uses keyword matching as fast path, with LLM fallback for ambiguous input.
+   * @param {string} input - Player input
+   * @param {string} actionType - Explicit action type if provided
+   * @returns {Promise<object>} Parsed intent { type, raw, llm_enhanced? }
+   */
   async parseIntent(input, actionType) {
-    // For MVP, simple keyword matching
-    // Phase 2: Use LLM for intent classification
+    // 1. Fast path: keyword matching (no API call needed)
     const keywords = {
       move: ['去', '走', '到', '前往', 'enter', 'go to', 'move to', 'move'],
       talk: ['说', '问', 'talk', 'ask', 'speak', 'tell', 'chat', 'conversation', '对话'],
@@ -116,6 +122,32 @@ export class GameStateMachine {
         return { type: intent, raw: input };
       }
     }
+
+    // 2. LLM fallback: if keyword matching fails and LLM client is available
+    if (this.llmClient && this.llmClient.isAvailable() && input.length > 0) {
+      try {
+        const systemPrompt = '你是一个TRPG游戏意图分类器。将玩家输入归类为以下类别之一：move（移动）、talk（交谈）、inspect（检查）、interact（交互）、attack（攻击）、use（使用）、flee（逃跑）、dice_check（骰子检定）、unknown（未知）。返回JSON格式：{"intent": "类别", "confidence": 0-1, "reasoning": "简要原因"}';
+        const userPrompt = `玩家输入："${input}"`;
+
+        const result = await this.llmClient.chatJSON([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ], { maxTokens: 128, temperature: 0.1 });
+
+        if (result && result.intent && result.intent !== 'unknown') {
+          return {
+            type: result.intent,
+            raw: input,
+            llm_enhanced: true,
+            confidence: result.confidence || 0.5,
+          };
+        }
+      } catch (err) {
+        // LLM failed — silently fall back to keyword/actionType logic
+        console.warn('[AI-GM] LLM intent parsing failed, falling back:', err.message);
+      }
+    }
+
     return { type: actionType || 'inspect', raw: input };
   }
 
@@ -637,12 +669,12 @@ export class GameStateMachine {
   }
 
   /**
-   * Handle combat initiation
+   * Handle combat initiation with optional LLM-enhanced narration
    * @param {object} intent - Player intent
    * @param {string} input - Raw input
-   * @returns {object} Combat initiation result
+   * @returns {Promise<object>} Combat initiation result
    */
-  handleCombatInitiation(intent, input) {
+  async handleCombatInitiation(intent, input) {
     // Check if current scene has combat enabled
     if (!this.currentScene.combat?.enabled) {
       return {
@@ -673,10 +705,33 @@ export class GameStateMachine {
       }
     }
 
+    const enemyNames = enemies.map((e) => this.module.npcs?.[e]?.name || e).join('、');
+    let narration = `战斗开始！你面对${enemies.length}个敌人：${enemyNames}。`;
+
+    // LLM-enhanced combat narration
+    if (this.llmClient && this.llmClient.isAvailable()) {
+      try {
+        const sceneDesc = this.currentScene.description || '一个危险的地方';
+        const systemPrompt = '你是TRPG战斗叙事生成器。根据场景和敌人信息，生成一段紧张、生动的战斗开场描述。保持简洁（30-50字），风格克苏鲁/恐怖。返回纯文本，不要JSON。';
+        const userPrompt = `场景：${sceneDesc}\n敌人：${enemyNames}\n玩家行动：${input || '发起攻击'}`;
+
+        const result = await this.llmClient.chat([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ], { maxTokens: 128, temperature: 0.8 });
+
+        if (result && result.content) {
+          narration = result.content.trim();
+        }
+      } catch (err) {
+        console.warn('[AI-GM] LLM combat narration failed, using fallback:', err.message);
+      }
+    }
+
     return {
       type: 'combat_start',
       scene: this.currentScene.id,
-      narration: `战斗开始！你面对${enemies.length}个敌人：${enemies.map((e) => this.module.npcs?.[e]?.name || e).join('、')}。`,
+      narration,
       enemies,
       target,
       available_actions: [

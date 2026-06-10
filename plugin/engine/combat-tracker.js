@@ -14,10 +14,15 @@
 import { RuleEngine } from './rule-engine.js';
 
 export class CombatTracker {
-  constructor(campaign) {
+  /**
+   * @param {object} campaign - Campaign state
+   * @param {LLMClient|null} llmClient - Optional LLM client for enemy AI
+   */
+  constructor(campaign, llmClient = null) {
     this.campaign = campaign;
     this.state = campaign.combat_state || null;
     this.rules = new RuleEngine(campaign.module?.system || 'coc');
+    this.llmClient = llmClient;
   }
 
   /**
@@ -414,9 +419,9 @@ export class CombatTracker {
 
   /**
    * Process enemy auto-turns (for AI enemies)
-   * @returns {Array<object>} Enemy action results
+   * @returns {Promise<Array<object>>} Enemy action results
    */
-  processEnemyAutoTurn() {
+  async processEnemyAutoTurn() {
     const results = [];
 
     while (
@@ -424,7 +429,7 @@ export class CombatTracker {
       this.state.initiative[this.state.current_turn_index]?.type === 'enemy'
     ) {
       const enemy = this.state.initiative[this.state.current_turn_index];
-      const action = this.decideEnemyAction(enemy);
+      const action = await this.decideEnemyAction(enemy);
       const result = this.resolveEnemyAction(enemy, action);
       results.push(result);
       this.state.log.push(result.log);
@@ -436,26 +441,50 @@ export class CombatTracker {
   }
 
   /**
-   * Decide enemy action based on AI rules
+   * Decide enemy action based on AI rules, with optional LLM enhancement
    * @param {object} enemy - Enemy entity data
-   * @returns {object} Enemy action decision
+   * @returns {Promise<object>} Enemy action decision
    */
-  decideEnemyAction(enemy) {
+  async decideEnemyAction(enemy) {
     const enemyHP = this.campaign.npcs_state[enemy.entity_id]?.current_hp || 0;
     const maxHP = enemy.stats?.HP || 10;
     const hpPercent = enemyHP / maxHP;
 
-    // Flee if HP < 20%
+    // LLM enhancement: get nuanced enemy behavior if client available
+    if (this.llmClient && this.llmClient.isAvailable()) {
+      try {
+        const npcTemplate = this.campaign.module?.npcs?.[enemy.entity_id];
+        const npcName = npcTemplate?.name || enemy.name || enemy.entity_id;
+        const systemPrompt = '你是TRPG敌人AI决策器。根据敌人状态和战场情况，选择最合理的行动。返回JSON格式：{"action": "attack|flee|skill", "skill": "技能名（可选）", "target": "player_1", "reasoning": "简要原因"}';
+        const userPrompt = `敌人：${npcName}\nHP：${enemyHP}/${maxHP} (${Math.round(hpPercent * 100)}%)\n可用技能：${enemy.combat_skills?.join(', ') || '无'}\n玩家HP：${this.campaign.player.hp}/${this.campaign.player.max_hp}`;
+
+        const result = await this.llmClient.chatJSON([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ], { maxTokens: 128, temperature: 0.6 });
+
+        if (result && result.action) {
+          return {
+            type: result.action,
+            target: result.target || 'player_1',
+            skill: result.skill,
+            llm_enhanced: true,
+          };
+        }
+      } catch (err) {
+        console.warn('[AI-GM] LLM enemy decision failed, falling back to rules:', err.message);
+      }
+    }
+
+    // Rule-based fallback
     if (hpPercent < 0.2) {
       return { type: 'flee', target: 'player_1' };
     }
 
-    // Use occult magic if available and HP < 50%
     if (hpPercent < 0.5 && enemy.combat_skills?.includes('occult_magic')) {
       return { type: 'skill', skill: 'occult_magic', target: 'player_1' };
     }
 
-    // Default: attack player
     return { type: 'attack', target: 'player_1', skill: '格斗' };
   }
 
