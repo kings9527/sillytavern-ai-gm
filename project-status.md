@@ -1,8 +1,8 @@
 # AI-GM 项目状态
 
 **项目**: sillytavern-ai-gm  
-**当前阶段**: Phase 1 MVP（单人 CoC 跑团）  
-**最后更新**: 2026-06-06  
+**当前阶段**: Phase 3 Surface（UI 层开发）  
+**最后更新**: 2026-06-10  
 
 ---
 
@@ -310,7 +310,7 @@
 
 | 模块 | 状态 | 完成度 | 说明 |
 |------|------|--------|------|
-| **前端 Extension** | ✅ Day1 完成 | 65% | Day2 新增：存档槽位UI + 战斗日志 + HP同步 |
+| **前端 Extension** | ✅ Day1+Surface | 75% | Day2+Surface: 存档槽位UI + 战斗日志 + HP同步 + game-controller浏览器兼容 + panel日志折叠 + 连接状态 |
 | **后端 Plugin** | ✅ Day2 完成 | 70% | Day2 新增：combat_summary + save/list + 玩家HP同步 |
 | **模组解析器** | ✅ 基础 | 40% | JSON 解析 + Markdown 占位 |
 | **状态机** | ✅ Day2 完成 | 70% | 场景切换 + interact动作 + 事件触发 + 检定联动 + 结局 |
@@ -327,10 +327,48 @@
 
 ---
 
+## Phase 3 Surface Day 1 完成记录（2026-06-10）
+
+### UI 组件浏览器兼容性修复
+- ✅ `plugin/ui/game-controller.js` — 浏览器兼容重写
+  - 移除 Node `require`/`path`，改用 `window` 全局对象依赖注入（`AiGmPanel`/`AiGmNpc`/`AiGmScene`）
+  - 完整 JSDoc 注释：所有公共方法 + 类型注解（`@param`/`@returns`/`@throws`）
+  - 错误处理：try/catch + 日志，防御式编程（空值校验、后端健康检查）
+  - 连接状态指示器：online/offline/error 三态 + 状态栏 UI 同步
+  - 指数退避轮询：失败时自动延长间隔（5s → 60s 上限），成功时恢复
+  - 自动重连：失败 3 次后触发单次重连尝试
+  - 事件分发：`ai-gm:state-sync` + `ai-gm:connection-change` 自定义事件
+  - 可交互物点击绑定：出口按钮 + 场景可交互物（扩展选择器支持）
+  - 新增公共方法：`getStatus()` / `refreshState()` / `destroy()`
+
+### 面板增强（`plugin/ui/panel.js`）
+- ✅ 可折叠区域：NPC / 出口 / 玩家状态 / 日志 — 点击标题切换展开/折叠
+- ✅ 日志面板：
+  - 50 条滚动日志缓冲区，带时间戳和类型图标（场景🏞️/战斗⚔️/骰子🎲/玩家🎭/NPC👤/系统⚙️/存档💾/错误❌）
+  - 类型颜色区分：战斗红色、错误深红、存档绿色
+  - 自动滚动到底部
+  - `appendLog()` / `appendLogEntries()` / `clearLog()` 公共 API
+- ✅ 玩家状态增强：HP/SAN/MP 三色条形图（CSS 渐变），带百分比动画
+- ✅ 连接状态栏：头部区域显示连接状态（🟢在线/🔴离线/🟡错误）
+- ✅ 响应式样式：768px 断点适配，移动端缩小日志高度
+- ✅ 完整 JSDoc 注释
+
+### 代码规范
+- ✅ ESM 模块规范（浏览器兼容的 `window` 全局导出）
+- ✅ 所有函数 JSDoc 注释
+- ✅ try/catch + 错误日志
+- ✅ 单功能提交，commit 信息清晰
+- ✅ `node --check` 语法验证通过
+
+### Git Commit
+- `3c07721` — feat(ui): Day 1 Surface - fix game-controller browser compat + enhance panel with logs/collapsible
+
+---
+
 ## 下一步（Phase 3 Surface）
 
 ### 高优先级
-- [ ] 前端 UI 基础框架：`plugin/ui/` 目录结构、主面板、LLM 配置面板、游戏主界面
+- [x] 前端 UI 基础框架：`plugin/ui/` 目录结构、主面板（panel.js + game-controller.js 已就绪）
 - [ ] NPC 状态卡片：`plugin/ui/npc-card.js` — 动态更新 NPC HP/态度
 - [ ] 场景渲染器：`plugin/ui/scene-renderer.js` — 场景描述 + 出口按钮 + 氛围渲染
 - [ ] 前端 Extension 集成 LLM 配置面板：provider 选择、模型输入、测试按钮
@@ -350,16 +388,28 @@
 ### 用户手册
 - [ ] 用户使用说明书：`docs/user-manual.md` — 安装指南、快速开始、界面说明、模组制作、FAQ
 
-## 已知问题（已解决）
+## 明日规划（2026-06-11）—— Day 2 Engine
 
-1. ✅ dice.js 内存溢出（Day 3 已修复）
-2. ✅ 存档读取后 combat_state 丢失（Day 3 已修复）
-3. ✅ 事件重复触发（Day 3 已修复）
-4. ✅ 输入未消毒（Day 3 已修复）
-5. ✅ Markdown 模组解析（Day 2 已实现基础版）
-6. ✅ LLM 客户端语法错误（Day 2 修复：字符串拼接换行符转义问题）
+基于今日完成：game-controller 浏览器兼容修复 + panel 日志/折叠/连接状态增强。
+
+### 10:00 开发轮次：NPC 卡片增强 + 场景渲染器增强
+- 修改 `plugin/ui/npc-card.js` — 添加 HP/SAN 动态条形图、态度颜色标签、状态效果图标
+- 修改 `plugin/ui/scene-renderer.js` — 添加氛围动画、背景图切换、响应式布局
+- 限制：每轮 1-2 文件，逐个完成
+
+### 13:00 开发轮次：前端 Extension 集成 LLM 配置面板
+- 修改 `plugin/ui/index.js`（或新建 `plugin/ui/llm-config.js`）— 接入 ST 侧边栏，展示 provider/模型/测试按钮
+- 限制：每轮 1-2 文件，逐个完成
+
+### 17:00 日报
+- 总结当天成果 + 问题追踪 + 更新明日规划
+
+### 21:00 开发轮次：CSS 整合与文档
+- 统一 `plugin/ui/styles.css` — 提取所有组件内联样式，适配 ST 主题变量
+- 移动端适配：面板折叠、NPC 卡片横向滚动
+- 限制：每轮 1-2 文件，逐个完成
 
 ---
 
-*状态更新：2026-06-09 22:50*  
-*Git Commit: [待更新] — feat(llm): Phase 2 LLM integration layer + NPC decision enhancement + config endpoints*
+*状态更新：2026-06-10 22:30*  
+*Git Commit: `3c07721` — feat(ui): Day 1 Surface - fix game-controller browser compat + enhance panel with logs/collapsible*
