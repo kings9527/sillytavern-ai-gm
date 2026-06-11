@@ -2,7 +2,7 @@
   "name": "sillytavern-ai-gm-plugin",
   "version": "0.1.0",
   "description": "AI-GM backend plugin for SillyTavern",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "test": "node test/index.js",

@@ -388,28 +388,48 @@
 ### 用户手册
 - [ ] 用户使用说明书：`docs/user-manual.md` — 安装指南、快速开始、界面说明、模组制作、FAQ
 
-## 明日规划（2026-06-11）—— Day 2 Engine
+## 明日规划（2026-06-11 全速 Day 2 Engine）
 
-基于今日完成：game-controller 浏览器兼容修复 + panel 日志/折叠/连接状态增强。
+基于今日完成：Phase 3 Surface 全部 UI 组件就绪（panel + llm-config + game-interface + npc-card + scene-renderer + game-controller）。
 
-### 10:00 开发轮次：NPC 卡片增强 + 场景渲染器增强
-- 修改 `plugin/ui/npc-card.js` — 添加 HP/SAN 动态条形图、态度颜色标签、状态效果图标
-- 修改 `plugin/ui/scene-renderer.js` — 添加氛围动画、背景图切换、响应式布局
+**全速目标：让 AI-GM 真正可用 — 用户打开 ST 就能看到面板，输入自然语言被 LLM 理解，NPC 和敌人用 LLM 思考。**
+
+### 10:00 ST Extension 面板挂载
+- 创建 `plugin/manifest.json` — Extension 注册信息
+- 修改 `plugin/index.js`（Extension 入口）— 注册到 ST Extension 系统：
+  - 导出 `init()` 函数，ST 调用时初始化 AI-GM 面板
+  - 在 ST 右侧工具栏创建 AI-GM 图标/按钮
+  - 点击图标展开 AI-GM 主面板（调用 panel.js + game-controller.js）
+  - 连接 ST 事件：角色切换时重置游戏、聊天消息触发 AI-GM 事件
+- 如果时间充裕：修改 `plugin/ui/game-controller.js` 移除 mock URL，使用 ST 实际后端地址（`/api/ai-gm/*`）
 - 限制：每轮 1-2 文件，逐个完成
 
-### 13:00 开发轮次：前端 Extension 集成 LLM 配置面板
-- 修改 `plugin/ui/index.js`（或新建 `plugin/ui/llm-config.js`）— 接入 ST 侧边栏，展示 provider/模型/测试按钮
+### 13:00 意图解析 LLM 升级
+- 修改 `plugin/engine/state-machine.js` — `parseIntent()` 升级为 LLM-based：
+  - 新增 `_llmParseIntent()`：构建 prompt 分类玩家输入为 move/examine/talk/combat/skill/item
+  - 调用 `llmClient.chat()` 获取 JSON `{action, target, confidence}`
+  - 置信度 > 0.7 采用 LLM 结果，否则 fallback 到 keyword
+  - 保留原有 keyword-based 解析作为 fallback
 - 限制：每轮 1-2 文件，逐个完成
 
 ### 17:00 日报
-- 总结当天成果 + 问题追踪 + 更新明日规划
+- 总结 Day 2 Engine 成果 + 问题追踪 + 更新明日规划
 
-### 21:00 开发轮次：CSS 整合与文档
-- 统一 `plugin/ui/styles.css` — 提取所有组件内联样式，适配 ST 主题变量
-- 移动端适配：面板折叠、NPC 卡片横向滚动
+### 21:00 NPC 与战斗 AI 接入 LLM
+- 修改 `plugin/engine/npc-decision.js` — `generateDialogue()` 接入 LLM：
+  - 新增 `_generateLLMDialogue()`：使用 `llmClient.chat()` 生成 NPC 角色扮演对话
+  - 构建 prompt：NPC 背景 + 情绪 + 话题 + 已知秘密
+  - 优先 LLM，fallback 模板驱动
+- 修改 `plugin/engine/combat-tracker.js` — 敌人 AI 接入 LLM：
+  - 新增 `_llmEnemyDecision()`：构建 prompt 让敌人选择 attack/flee/spell/item
+  - 优先 LLM，fallback 规则驱动（HP<20%逃跑等）
+- 限制：每轮 1-2 文件，逐个完成
+
+### 最后一步（21:00 任务完成后）
+- 更新 `project-status.md` 中的"明日规划"部分，为 2026-06-12 制定具体任务安排
 - 限制：每轮 1-2 文件，逐个完成
 
 ---
 
-*状态更新：2026-06-10 22:30*  
-*Git Commit: `3c07721` — feat(ui): Day 1 Surface - fix game-controller browser compat + enhance panel with logs/collapsible*
+*状态更新：2026-06-10 22:45*  
+*Git Commit: `3c07721` — feat(ui): Day 1 Surface 完成 + 全速规划制定*

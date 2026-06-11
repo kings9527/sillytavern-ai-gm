@@ -81,14 +81,122 @@ export class GameStateMachine {
    * @returns {Promise<object>} Parsed intent
    */
   /**
-   * Parse player intent from input text
-   * Uses keyword matching as fast path, with LLM fallback for ambiguous input.
+   * Parse player intent from input text using LLM as primary, keyword as fallback.
    * @param {string} input - Player input
    * @param {string} actionType - Explicit action type if provided
-   * @returns {Promise<object>} Parsed intent { type, raw, llm_enhanced? }
+   * @returns {Promise<object>} Parsed intent { type, raw, llm_enhanced?, confidence? }
    */
   async parseIntent(input, actionType) {
-    // 1. Fast path: keyword matching (no API call needed)
+    // 1. LLM primary path: if llmClient is available and configured, try LLM first
+    if (this.llmClient && this.llmClient.isAvailable() && (input || '').length > 0) {
+      try {
+        const llmResult = await this._llmParseIntent(input, this.llmClient);
+        if (llmResult && llmResult.confidence > 0.7) {
+          return {
+            type: llmResult.type,
+            raw: input,
+            llm_enhanced: true,
+            confidence: llmResult.confidence,
+            target: llmResult.target || null,
+          };
+        }
+        // confidence too low — fall through to keyword fallback
+      } catch (err) {
+        // LLM failed — silently fall through to keyword fallback
+        console.warn('[AI-GM] LLM intent parsing failed, falling back to keyword:', err.message);
+      }
+    }
+
+    // 2. Keyword fallback (also used when LLM is unavailable or returned low confidence)
+    return this._keywordParseIntent(input, actionType);
+  }
+
+  /**
+   * LLM-based intent parsing
+   * Calls llmClient.chat() to classify player input into a structured intent.
+   * Maps LLM action names to internal state-machine types.
+   *
+   * @param {string} playerInput - Raw player input
+   * @param {object} llmClient - LLM client instance with chat() method
+   * @returns {Promise<{type: string, target: string|null, confidence: number}>}
+   * @private
+   */
+  async _llmParseIntent(playerInput, llmClient) {
+    const systemPrompt = `You are a TRPG game intent classifier. Analyze the player's input and classify it into exactly one of the following categories:
+- move: go to a location, enter, exit, walk, follow a path
+- inspect: look at, examine, check, observe, investigate something
+- talk: speak to an NPC, ask, tell, say, greet, dialogue
+- attack: fight, strike, shoot, kill, combat action
+- use: use an item, activate, consume, equip, cast a spell
+- interact: pick up, take, open, close, read, loot, give, hand over
+- flee: run away, escape, retreat, withdraw
+- skill: perform a skill check, dice roll, test, perception, library use
+- unknown: unclear, creative roleplay, or doesn't fit above
+
+Respond ONLY with a JSON object in this exact format:
+{"action": "<category>", "target": "<target entity or null>", "confidence": 0.0-1.0}
+
+Rules:
+- action must be one of the exact category strings above
+- target is the specific entity (NPC name, item name, location) the player refers to, or null if none
+- confidence should reflect how clearly the input matches the category (0.0 = completely ambiguous, 1.0 = perfectly clear)`;
+
+    const userPrompt = `Player input: "${playerInput}"`;
+
+    const response = await llmClient.chat([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ], { maxTokens: 128, temperature: 0.1 });
+
+    if (!response || !response.content) {
+      throw new Error('LLM returned empty response');
+    }
+
+    // Parse JSON from response (handle markdown code blocks)
+    let parsed;
+    const content = response.content.trim();
+    const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (jsonMatch) {
+      parsed = JSON.parse(jsonMatch[1].trim());
+    } else {
+      parsed = JSON.parse(content);
+    }
+
+    // Map LLM action names to internal state-machine intent types
+    const actionMap = {
+      move: 'move',
+      inspect: 'inspect',
+      examine: 'inspect',
+      talk: 'talk',
+      attack: 'attack',
+      combat: 'attack',
+      use: 'use',
+      interact: 'interact',
+      item: 'interact',
+      flee: 'flee',
+      skill: 'dice_check',
+      unknown: 'unknown',
+    };
+
+    const mappedType = actionMap[parsed.action] || parsed.action || 'unknown';
+
+    return {
+      type: mappedType,
+      target: parsed.target || null,
+      confidence: Math.max(0, Math.min(1, parseFloat(parsed.confidence) || 0.5)),
+    };
+  }
+
+  /**
+   * Keyword-based intent parsing (fast path, no API calls)
+   * Used as fallback when LLM is unavailable or returns low confidence.
+   *
+   * @param {string} input - Player input
+   * @param {string} actionType - Explicit action type if provided
+   * @returns {object} Parsed intent { type, raw }
+   * @private
+   */
+  _keywordParseIntent(input, actionType) {
     const keywords = {
       move: ['去', '走', '到', '前往', 'enter', 'go to', 'move to', 'move'],
       talk: ['说', '问', 'talk', 'ask', 'speak', 'tell', 'chat', 'conversation', '对话'],
@@ -123,31 +231,7 @@ export class GameStateMachine {
       }
     }
 
-    // 2. LLM fallback: if keyword matching fails and LLM client is available
-    if (this.llmClient && this.llmClient.isAvailable() && input.length > 0) {
-      try {
-        const systemPrompt = '你是一个TRPG游戏意图分类器。将玩家输入归类为以下类别之一：move（移动）、talk（交谈）、inspect（检查）、interact（交互）、attack（攻击）、use（使用）、flee（逃跑）、dice_check（骰子检定）、unknown（未知）。返回JSON格式：{"intent": "类别", "confidence": 0-1, "reasoning": "简要原因"}';
-        const userPrompt = `玩家输入："${input}"`;
-
-        const result = await this.llmClient.chatJSON([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ], { maxTokens: 128, temperature: 0.1 });
-
-        if (result && result.intent && result.intent !== 'unknown') {
-          return {
-            type: result.intent,
-            raw: input,
-            llm_enhanced: true,
-            confidence: result.confidence || 0.5,
-          };
-        }
-      } catch (err) {
-        // LLM failed — silently fall back to keyword/actionType logic
-        console.warn('[AI-GM] LLM intent parsing failed, falling back:', err.message);
-      }
-    }
-
+    // Fallback to explicit actionType or default
     return { type: actionType || 'inspect', raw: input };
   }
 
