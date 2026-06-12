@@ -163,12 +163,131 @@ test('System rules loaded', () => {
 console.log('\n--- GameStateMachine ---');
 const stateMachine = new GameStateMachine(testModule, testCampaign);
 
-test('Parse intent - move', async () => {
+// ─── LLM Intent Parsing Tests (Day 2 Engine) ───
+
+test('Parse intent - LLM high confidence → uses LLM result', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: JSON.stringify({ action: 'inspect', target: '壁画', confidence: 0.95 }),
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('仔细看看墙上的壁画', null);
+  assert(intent.type === 'inspect', `Expected inspect, got ${intent.type}`);
+  assert(intent.target === '壁画', `Expected target 壁画, got ${intent.target}`);
+  assert(intent.confidence === 0.95, `Expected confidence 0.95, got ${intent.confidence}`);
+  assert(intent.llm_enhanced === true, 'Expected llm_enhanced flag');
+});
+
+test('Parse intent - LLM low confidence → fallback to keyword', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: JSON.stringify({ action: 'unknown', target: null, confidence: 0.3 }),
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('攻击那个怪物', null);
+  assert(intent.type === 'attack', `Expected attack (keyword fallback), got ${intent.type}`);
+  assert(intent.llm_enhanced === undefined, 'Expected no llm_enhanced flag on fallback');
+});
+
+test('Parse intent - LLM unavailable → keyword fallback', async () => {
+  const mockLLM = {
+    isAvailable: () => false,
+    chat: async () => ({ content: '{"action":"move","confidence":0.9}' }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('去图书馆', null);
+  assert(intent.type === 'move', `Expected move (keyword fallback), got ${intent.type}`);
+  assert(intent.llm_enhanced === undefined, 'Expected no llm_enhanced flag');
+});
+
+test('Parse intent - LLM throws error → keyword fallback with warning', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => { throw new Error('network timeout'); },
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('检查书架', null);
+  assert(intent.type === 'inspect', `Expected inspect (keyword fallback), got ${intent.type}`);
+  assert(intent.llm_enhanced === undefined, 'Expected no llm_enhanced flag on error fallback');
+});
+
+test('Parse intent - LLM markdown code block response', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: '```json\n' + JSON.stringify({ action: 'talk', target: '守夜人', confidence: 0.88 }) + '\n```',
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('跟守夜人打个招呼', null);
+  assert(intent.type === 'talk', `Expected talk, got ${intent.type}`);
+  assert(intent.target === '守夜人', `Expected target 守夜人, got ${intent.target}`);
+  assert(intent.confidence === 0.88, `Expected confidence 0.88, got ${intent.confidence}`);
+  assert(intent.llm_enhanced === true, 'Expected llm_enhanced flag');
+});
+
+test('Parse intent - LLM skill action maps to dice_check', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: JSON.stringify({ action: 'skill', target: '图书馆使用', confidence: 0.85 }),
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('我要检定图书馆使用', null);
+  assert(intent.type === 'dice_check', `Expected dice_check, got ${intent.type}`);
+  assert(intent.target === '图书馆使用', `Expected target 图书馆使用, got ${intent.target}`);
+});
+
+test('Parse intent - LLM combat action maps to attack', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: JSON.stringify({ action: 'combat', target: '深潜者', confidence: 0.92 }),
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('和深潜者战斗', null);
+  assert(intent.type === 'attack', `Expected attack, got ${intent.type}`);
+  assert(intent.target === '深潜者', `Expected target 深潜者, got ${intent.target}`);
+});
+
+test('Parse intent - LLM confidence 0 edge case → fallback', async () => {
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => ({
+      content: JSON.stringify({ action: 'inspect', target: '地板', confidence: 0 }),
+    }),
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('看看地板', null);
+  // confidence 0 is not > 0.7, so fallback to keyword
+  assert(intent.type === 'inspect', `Expected inspect (keyword fallback), got ${intent.type}`);
+  assert(intent.llm_enhanced === undefined, 'Expected no llm_enhanced flag for zero confidence');
+});
+
+test('Parse intent - empty input skips LLM', async () => {
+  const callLog = [];
+  const mockLLM = {
+    isAvailable: () => true,
+    chat: async () => { callLog.push(1); return { content: '{"action":"move","confidence":0.9}' }; },
+  };
+  const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
+  const intent = await sm.parseIntent('', null);
+  assert(callLog.length === 0, 'Expected LLM not called for empty input');
+  assert(intent.type === 'inspect', `Expected default inspect, got ${intent.type}`);
+});
+
+test('Parse intent - keyword move', async () => {
   const intent = await stateMachine.parseIntent('去场景2', null);
   assert(intent.type === 'move', 'Expected move intent');
 });
 
-test('Parse intent - inspect', async () => {
+test('Parse intent - keyword inspect', async () => {
   const intent = await stateMachine.parseIntent('看看周围', null);
   assert(intent.type === 'inspect', 'Expected inspect intent');
 });

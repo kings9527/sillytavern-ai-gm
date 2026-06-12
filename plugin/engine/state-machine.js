@@ -183,7 +183,7 @@ Rules:
     return {
       type: mappedType,
       target: parsed.target || null,
-      confidence: Math.max(0, Math.min(1, parseFloat(parsed.confidence) || 0.5)),
+      confidence: Math.max(0, Math.min(1, parsed.confidence != null ? parseFloat(parsed.confidence) : 0.5)),
     };
   }
 
