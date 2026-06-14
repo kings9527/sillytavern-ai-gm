@@ -1,198 +1,363 @@
-/**
- * AI-GM Extension — ST Extension 入口
- * 注册到 SillyTavern Extension 系统，挂载 AI-GM 面板
- *
- * @version 0.1.0
- */
+// AI-GM Extension Entry — SillyTavern Extension System
+// 作为 ST 内置扩展打包，通过 hooks.activate 调用 init()
+// 路径：public/scripts/extensions/ai-gm/index.js
 
-import { eventSource, event_types } from '../../../../../../../script.js';
-import { extension_settings, renderExtensionTemplate } from '../../../../../../../extensions.js';
+import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
+import { getContext, renderExtensionTemplateAsync, extension_settings } from '../../../extensions.js';
+
+// 静态导入 UI 模块（webpack 正确打包，确保全局对象设置）
+import './ui/panel.js';
+import './ui/npc-card.js';
+import './ui/scene-renderer.js';
+import './ui/game-controller.js';
 
 const EXT_NAME = 'ai-gm';
 const EXT_DISPLAY = 'AI-GM';
 
-/** @type {boolean} */
-let isEnabled = false;
-/** @type {HTMLElement|null} */
+let settings = {};
+const defaultSettings = {
+  enabled: true,
+  apiUrl: '/api/ai-gm',
+  autoStart: false,
+};
+
+let panelVisible = false;
 let panelContainer = null;
-/** @type {HTMLElement|null} */
-let toggleBtn = null;
+let gameController = null;
 
-/* ---------- 生命周期钩子 ---------- */
-
-/**
- * Extension 被启用时调用（ST 加载扩展时）
- */
-export function init() {
-  onEnable();
+/** ST Extension activate hook — 由 ST 扩展加载器调用 */
+export async function init() {
+  console.log(`[${EXT_DISPLAY}] Initializing extension...`);
+  loadSettings();
+  createExtensionButton();
+  createExtensionPanel();
+  bindEvents();
+  bindBridgeEvents();
+  console.log(`[${EXT_DISPLAY}] Extension initialized successfully`);
 }
 
 export function onEnable() {
-  console.log(`[${EXT_DISPLAY}] Extension enabled`);
-  isEnabled = true;
-  initPanel();
-  bindEvents();
+  console.log(`[${EXT_DISPLAY}] Enabled`);
 }
 
-/**
- * Extension 被禁用时调用
- */
 export function onDisable() {
-  console.log(`[${EXT_DISPLAY}] Extension disabled`);
-  isEnabled = false;
-  destroyPanel();
+  console.log(`[${EXT_DISPLAY}] Disabled`);
+  if (gameController) {
+    window.AiGmGameController?.destroy?.();
+    gameController = null;
+  }
 }
 
-/* ---------- 面板挂载 ---------- */
+function loadSettings() {
+  if (!extension_settings[EXT_NAME]) {
+    extension_settings[EXT_NAME] = { ...defaultSettings };
+  }
+  settings = extension_settings[EXT_NAME];
+}
 
-/**
- * 初始化 AI-GM 面板：在 ST 右侧工具栏创建按钮 + 展开面板
- */
-function initPanel() {
-  if (document.getElementById('ai-gm-toggle-btn')) return;
-
-  // 1. 创建工具栏按钮（插入到 extensions_menu 末尾）
-  const menu = document.getElementById('extensions_menu');
+function createExtensionButton() {
+  const menu = document.getElementById('extensionsMenu');
   if (!menu) {
-    console.warn(`[${EXT_DISPLAY}] #extensions_menu not found, retry in 1s`);
-    setTimeout(initPanel, 1000);
+    console.warn(`[${EXT_DISPLAY}] #extensionsMenu not found, retry in 1s`);
+    setTimeout(createExtensionButton, 1000);
     return;
   }
 
-  toggleBtn = document.createElement('div');
-  toggleBtn.id = 'ai-gm-toggle-btn';
-  toggleBtn.className = 'list-group-item flex-container flexGap5';
-  toggleBtn.innerHTML = `
-    <div class="fa-solid fa-dice-d20 extensionsMenuExtensionButton" title="AI-GM"></div>
-    <span class="extensionsMenuExtensionName">${EXT_DISPLAY}</span>
+  const existing = document.getElementById('ai-gm-menu-btn');
+  if (existing) {
+    console.log(`[${EXT_DISPLAY}] Menu button already exists`);
+    return;
+  }
+
+  const button = document.createElement('div');
+  button.id = 'ai-gm-menu-btn';
+  button.className = 'list-group-item flex-container flexGap5';
+  button.innerHTML = `
+    <div class="fa-solid fa-gamepad extensionsMenuExtensionButton"></div>
+    <span data-i18n="ext_ai_gm_btn">AI-GM</span>
   `;
-  toggleBtn.addEventListener('click', onToggleClick);
-  menu.appendChild(toggleBtn);
-
-  // 2. 创建面板容器（默认隐藏，定位到右侧扩展区）
-  const extSettings = document.getElementById('extensions_settings');
-  if (extSettings) {
-    panelContainer = document.createElement('div');
-    panelContainer.id = 'ai-gm-panel-container';
-    panelContainer.className = 'ai-gm-panel-container hidden';
-    extSettings.insertAdjacentElement('afterend', panelContainer);
-  }
-
-  // 3. 加载 UI 子模块（动态注入脚本，确保全局对象可用）
-  loadUiModules().then(() => {
-    if (window.AiGmPanel && panelContainer) {
-      window.AiGmPanel.initPanel(panelContainer);
-    }
-    if (window.AiGmGameController) {
-      window.AiGmGameController.initGameController('/api/plugins/ai-gm', 'default');
-    }
-  }).catch((err) => {
-    console.error(`[${EXT_DISPLAY}] UI module load failed:`, err);
-  });
-
-  console.log(`[${EXT_DISPLAY}] Panel mounted`);
+  button.title = 'AI-GM 游戏面板';
+  button.addEventListener('click', () => togglePanel());
+  menu.appendChild(button);
+  console.log(`[${EXT_DISPLAY}] Menu button created in #extensionsMenu`);
 }
 
-/**
- * 销毁面板和按钮
- */
-function destroyPanel() {
-  toggleBtn?.remove();
-  toggleBtn = null;
-  panelContainer?.remove();
-  panelContainer = null;
-  if (window.AiGmGameController) {
-    window.AiGmGameController.destroy?.();
-  }
-}
-
-/* ---------- 交互事件 ---------- */
-
-/**
- * 点击工具栏按钮：展开/收起面板
- */
-function onToggleClick() {
-  if (!panelContainer) return;
-  const isHidden = panelContainer.classList.toggle('hidden');
-  toggleBtn?.classList.toggle('active', !isHidden);
-
-  if (!isHidden && window.AiGmGameController) {
-    window.AiGmGameController.refreshState?.();
-  }
-}
-
-/**
- * 绑定 ST 原生事件
- */
-function bindEvents() {
-  // 角色切换 → 重置游戏状态
-  eventSource.on(event_types.CHAT_CHANGED, () => {
-    console.log(`[${EXT_DISPLAY}] CHAT_CHANGED — reset game state`);
-    if (window.AiGmGameController) {
-      window.AiGmGameController.destroy?.();
-      window.AiGmGameController.initGameController?.('/api/plugins/ai-gm', 'default');
-    }
-  });
-
-  // 新消息 → 触发 AI-GM 事件解析（如检定请求、战斗指令）
-  eventSource.on(event_types.MESSAGE_RECEIVED, (data) => {
-    const message = data?.message?.mes || data?.mes || '';
-    if (!message) return;
-
-    // 简单指令匹配：/gm 开头视为 AI-GM 指令
-    if (message.startsWith('/gm')) {
-      const cmd = message.slice(3).trim();
-      handleGmCommand(cmd);
-    }
-  });
-
-  // 玩家发送消息 → 可扩展为动作解析
-  eventSource.on(event_types.MESSAGE_SENT, (data) => {
-    const message = data?.message?.mes || data?.mes || '';
-    if (!message) return;
-    // 未来可接入动作解析：move / attack / check / talk 等
-  });
-}
-
-/**
- * 处理 /gm 指令
- * @param {string} cmd
- */
-function handleGmCommand(cmd) {
-  console.log(`[${EXT_DISPLAY}] GM command:`, cmd);
-  if (!window.AiGmGameController) return;
-
-  if (cmd === 'reset') {
-    window.AiGmGameController.destroy?.();
-    window.AiGmGameController.initGameController?.('/api/plugins/ai-gm', 'default');
+async function createExtensionPanel() {
+  const settingsPanel = document.getElementById('extensions_settings');
+  if (!settingsPanel) {
+    console.warn(`[${EXT_DISPLAY}] #extensions_settings not found, retry in 1s`);
+    setTimeout(createExtensionPanel, 1000);
     return;
   }
 
-  // 其他指令透传给后端
-  window.AiGmGameController.handleAction?.('command', { text: cmd });
+  if (document.getElementById('ai-gm-settings-container')) {
+    console.log(`[${EXT_DISPLAY}] Settings panel already exists`);
+    return;
+  }
+
+  const container = document.createElement('div');
+  container.id = 'ai-gm-settings-container';
+  container.className = 'extension_container';
+
+  const drawer = document.createElement('div');
+  drawer.className = 'inline-drawer ai-gm-inline-drawer';
+  drawer.innerHTML = `
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b data-i18n="ext_ai_gm_title">AI-GM</b>
+      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content">
+      <div id="ai-gm-panel" style="display:none;"></div>
+      <div id="ai-gm-npc" style="display:none;"></div>
+      <div id="ai-gm-scene" style="display:none;"></div>
+      <div id="ai-gm-status" style="display:none;"></div>
+      <div class="ai-gm-controls">
+        <label class="checkbox_label">
+          <input type="checkbox" id="ai-gm-enabled" ${settings.enabled ? 'checked' : ''}>
+          <span data-i18n="ext_ai_gm_enabled">启用 AI-GM</span>
+        </label>
+        <label class="checkbox_label">
+          <span data-i18n="ext_ai_gm_api_url">API 地址</span>
+          <input type="text" id="ai-gm-api-url" value="${settings.apiUrl}" class="text_pole">
+        </label>
+        <div class="menu_button" id="ai-gm-start-btn">启动游戏</div>
+        <div class="menu_button" id="ai-gm-refresh-btn" style="display:none;">刷新状态</div>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(drawer);
+  settingsPanel.appendChild(container);
+
+  // 绑定控制元素
+  const enableCheckbox = document.getElementById('ai-gm-enabled');
+  if (enableCheckbox) {
+    enableCheckbox.addEventListener('change', (e) => {
+      settings.enabled = e.target.checked;
+      extension_settings[EXT_NAME] = settings;
+      saveSettingsDebounced();
+      toggleRefreshButton();
+    });
+  }
+
+  const apiUrlInput = document.getElementById('ai-gm-api-url');
+  if (apiUrlInput) {
+    apiUrlInput.addEventListener('change', (e) => {
+      settings.apiUrl = e.target.value;
+      extension_settings[EXT_NAME] = settings;
+      saveSettingsDebounced();
+    });
+  }
+
+  const startBtn = document.getElementById('ai-gm-start-btn');
+  if (startBtn) {
+    startBtn.addEventListener('click', () => startGame());
+  }
+
+  const refreshBtn = document.getElementById('ai-gm-refresh-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      if (gameController && window.AiGmGameController?.refreshState) {
+        window.AiGmGameController.refreshState();
+      }
+    });
+  }
+
+  panelContainer = document.getElementById('ai-gm-panel');
+  console.log(`[${EXT_DISPLAY}] Settings panel created in #extensions_settings`);
 }
 
-/* ---------- 模块加载 ---------- */
+function togglePanel() {
+  const container = document.getElementById('ai-gm-settings-container');
+  if (!container) {
+    console.warn(`[${EXT_DISPLAY}] Panel container not found`);
+    return;
+  }
 
-/**
- * 动态加载 UI 子模块（panel + game-controller）
- * 使用原生 import() 确保浏览器按序执行并挂载全局对象
- */
-async function loadUiModules() {
-  const modules = [
-    './ui/panel.js',
-    './ui/game-controller.js',
-  ];
+  const toggle = container.querySelector('.inline-drawer-toggle');
+  const content = container.querySelector('.inline-drawer-content');
+  if (!toggle || !content) {
+    console.warn(`[${EXT_DISPLAY}] Toggle or content element missing`);
+    return;
+  }
 
-  for (const mod of modules) {
-    try {
-      await import(/* @vite-ignore */ mod);
-    } catch (err) {
-      console.warn(`[${EXT_DISPLAY}] Failed to load ${mod}:`, err);
+  panelVisible = !panelVisible;
+  content.style.display = panelVisible ? 'block' : 'none';
+
+  const icon = toggle.querySelector('.inline-drawer-icon');
+  if (icon) {
+    icon.classList.toggle('down', panelVisible);
+    icon.classList.toggle('fa-circle-chevron-down', panelVisible);
+    icon.classList.toggle('fa-circle-chevron-up', !panelVisible);
+  }
+
+  if (panelVisible && !gameController && settings.enabled) {
+    startGame();
+  }
+  toggleRefreshButton();
+}
+
+function toggleRefreshButton() {
+  const refreshBtn = document.getElementById('ai-gm-refresh-btn');
+  if (!refreshBtn) return;
+  refreshBtn.style.display = (gameController && settings.enabled) ? 'inline-block' : 'none';
+}
+
+function startGame() {
+  if (!settings.enabled) {
+    console.warn(`[${EXT_DISPLAY}] 无法启动：AI-GM 未启用`);
+    return;
+  }
+
+  if (!window.AiGmGameController) {
+    console.warn(`[${EXT_DISPLAY}] 无法启动：游戏控制器未加载（检查 ui/game-controller.js 是否已打包）`);
+    return;
+  }
+
+  const campaignId = getCurrentCampaignId();
+  if (!campaignId) {
+    console.warn(`[${EXT_DISPLAY}] 无法启动：无法获取战役 ID`);
+    return;
+  }
+
+  try {
+    // 确保所有容器可见
+    const ids = ['ai-gm-panel', 'ai-gm-npc', 'ai-gm-scene', 'ai-gm-status'];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'block';
     }
+
+    window.AiGmGameController.initGameController(settings.apiUrl, campaignId);
+    gameController = window.AiGmGameController;
+    toggleRefreshButton();
+    console.log(`[${EXT_DISPLAY}] 游戏已启动: ${campaignId}`);
+  } catch (err) {
+    console.error(`[${EXT_DISPLAY}] 启动游戏失败:`, err);
   }
 }
 
-/* ---------- 导出（供 ST 测试或外部调用） ---------- */
+function getCurrentCampaignId() {
+  const context = getContext?.();
+  if (context?.chatId) {
+    return `st-${context.chatId}`;
+  }
+  if (context?.name) {
+    return `st-${context.name}`;
+  }
+  return `st-${Date.now()}`;
+}
 
-export { isEnabled, panelContainer, toggleBtn };
+function bindEvents() {
+  // 角色切换时重置游戏
+  eventSource.on(event_types.CHAT_CHANGED, () => {
+    console.log(`[${EXT_DISPLAY}] Chat changed, resetting game`);
+    if (gameController) {
+      window.AiGmGameController?.destroy?.();
+      gameController = null;
+    }
+    toggleRefreshButton();
+    if (settings.enabled && settings.autoStart) {
+      setTimeout(() => startGame(), 500);
+    }
+  });
+
+  // AI 消息生成完成
+  eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (messageId) => {
+    if (!settings.enabled || !gameController) return;
+    const context = getContext?.();
+    const message = context?.chat?.find?.(m => m.id === messageId || m.index === messageId);
+    if (message) {
+      document.dispatchEvent(new CustomEvent('ai-gm:ai-message', {
+        detail: { message, messageId, source: 'character' },
+      }));
+    }
+  });
+
+  // 用户消息生成完成
+  eventSource.on(event_types.USER_MESSAGE_RENDERED, (messageId) => {
+    if (!settings.enabled || !gameController) return;
+    const context = getContext?.();
+    const message = context?.chat?.find?.(m => m.id === messageId || m.index === messageId);
+    if (message) {
+      document.dispatchEvent(new CustomEvent('ai-gm:user-message', {
+        detail: { message, messageId, source: 'user' },
+      }));
+    }
+  });
+
+  console.log(`[${EXT_DISPLAY}] Events bound: CHAT_CHANGED, CHARACTER_MESSAGE_RENDERED, USER_MESSAGE_RENDERED`);
+}
+
+/** 桥接 UI 组件事件到游戏控制器 */
+function bindBridgeEvents() {
+  // NPC 动作（对话 / 调查 / 攻击）-> 转发到控制器
+  document.addEventListener('ai-gm:npc-action', (e) => {
+    if (!gameController || !window.AiGmGameController?.handleAction) return;
+    const { npcId, action } = e.detail || {};
+    if (!npcId || !action) return;
+
+    const actionMap = {
+      talk: 'npc_talk',
+      inspect: 'npc_inspect',
+      attack: 'npc_attack',
+    };
+    const actionType = actionMap[action] || action;
+    window.AiGmGameController.handleAction({ type: actionType, target: npcId });
+  });
+
+  // 场景交互（可交互物品）-> 转发到控制器
+  document.addEventListener('ai-gm:scene-interact', (e) => {
+    if (!gameController || !window.AiGmGameController?.handleAction) return;
+    const { item } = e.detail || {};
+    if (!item) return;
+    window.AiGmGameController.handleAction({ type: 'interact', target: item });
+  });
+
+  // 用户消息 -> 可以作为动作解析（简单文本 -> 移动/观察等）
+  document.addEventListener('ai-gm:user-message', (e) => {
+    if (!gameController || !window.AiGmGameController?.handleAction) return;
+    const { message } = e.detail || {};
+    if (!message?.mes) return;
+    const text = message.mes.trim();
+    if (!text) return;
+
+    // 简单解析：以 / 开头的命令视为 GM 动作
+    if (text.startsWith('/gm ')) {
+      const cmd = text.slice(4).trim();
+      window.AiGmGameController.handleAction({ type: 'command', command: cmd });
+    }
+  });
+
+  // AI 消息 -> 可以触发状态解析（如果 AI 返回结构化数据）
+  document.addEventListener('ai-gm:ai-message', (e) => {
+    if (!gameController) return;
+    const { message } = e.detail || {};
+    if (!message?.mes) return;
+    // 尝试解析消息中的 JSON 结构化数据（如 ```json {...} ```）
+    try {
+      const jsonMatch = message.mes.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[1]);
+        if (data.aiGmState && window.AiGmGameController?.syncToUI) {
+          window.AiGmGameController.syncToUI(data.aiGmState);
+        }
+      }
+    } catch (err) {
+      // 非结构化消息，忽略
+    }
+  });
+
+  // 连接状态变化 -> 刷新按钮状态
+  document.addEventListener('ai-gm:connection-change', (e) => {
+    const { status } = e.detail || {};
+    const startBtn = document.getElementById('ai-gm-start-btn');
+    if (startBtn) {
+      startBtn.textContent = status === 'online' ? '运行中' : '启动游戏';
+      startBtn.style.opacity = status === 'online' ? '0.6' : '1';
+    }
+  });
+
+  console.log(`[${EXT_DISPLAY}] Bridge events bound: npc-action, scene-interact, user-message, ai-message, connection-change`);
+}
+

@@ -1,5 +1,7 @@
 {
+  "name": "ai-gm",
   "display_name": "AI-GM",
+  "description": "SillyTavern AI-GM 游戏扩展 — 将任意角色扮演对话转化为结构化克苏鲁跑团体验，提供状态面板、NPC决策、场景渲染和骰子判定系统。",
   "loading_order": 20,
   "requires": [],
   "optional": [],
@@ -12,7 +14,6 @@
   "auto_update": true,
   "minimum_client_version": "1.18.0",
   "hooks": {
-    "onEnable": "onEnable",
-    "onDisable": "onDisable"
+    "activate": "init"
   }
 }

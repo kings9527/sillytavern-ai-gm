@@ -654,16 +654,14 @@ Player: ${campaign_state.player_name}, HP ratio: ${campaign_state.player_hp_rati
   }
 
   /**
-   * Generate dialogue for NPC (MVP: template-based, Phase 2: LLM)
+   * Generate dialogue for NPC (LLM-first, template fallback)
    * @param {string} contextSummary — Brief situation description
    * @param {string} mood — From decision.mood
    * @param {string} [topic] — Suggested dialogue topic
-   * @returns {Promise<Object>} { dialogue: string, actions: NPCDecision[] }
+   * @param {LLMClient} [llmClient] — Optional LLM client for AI-enhanced dialogue
+   * @returns {Promise<{text: string, emotion: string, secretRevealed?: string}>}
    */
   async generateDialogue(contextSummary, mood, topic, llmClient = null) {
-    const template = this.npcTemplate;
-    const npc = this.npcState;
-
     // Try LLM generation first if available
     if (llmClient && llmClient.isAvailable()) {
       try {
@@ -678,14 +676,14 @@ Player: ${campaign_state.player_name}, HP ratio: ${campaign_state.player_hp_rati
   }
 
   /**
-   * LLM-enhanced dialogue generation
+   * LLM-enhanced dialogue generation with structured output
    * @private
    */
   async _generateLLMDialogue(contextSummary, mood, topic, llmClient) {
     const template = this.npcTemplate;
     const npc = this.npcState;
 
-    const systemPrompt = `You are ${template.name || 'an NPC'} in a ${this.campaign.module?.system || 'horror'} RPG. Respond in character. Stay concise (1-2 paragraphs). Never break character. ${template.personality ? `Personality: ${template.personality}` : ''}`;
+    const systemPrompt = `You are ${template.name || 'an NPC'} in a ${this.campaign.module?.system || 'horror'} RPG. You must respond in strict JSON format. Stay concise (1-2 sentences). Never break character. ${template.personality ? `Personality: ${template.personality}` : ''}`;
 
     const prompt = `${contextSummary}
 
@@ -698,7 +696,9 @@ ${topic ? `Suggested topic: ${topic}` : ''}
 ${npc.secrets_revealed.length > 0 ? `Secrets already revealed: ${npc.secrets_revealed.join(', ')}` : ''}
 ${npc.known_topics.length > 0 ? `Topics discussed: ${npc.known_topics.join(', ')}` : ''}
 
-Respond with what you say or do.`;
+Respond ONLY with a JSON object in this exact format:
+{"text": "What you say or do (1-2 sentences in character)", "emotion": "current_emotion_name", "secretRevealed": "name_of_secret_if_any"}
+If no secret is revealed, omit secretRevealed or set it to null."`;
 
     const response = await llmClient.chat(
       [
@@ -708,37 +708,46 @@ Respond with what you say or do.`;
       { temperature: 0.8, maxTokens: 512 },
     );
 
-    let dialogue = response.content.trim();
-    const actions = [];
+    let parsed = { text: '', emotion: mood, secretRevealed: null };
+    try {
+      const raw = response.content.trim();
+      // Try to extract JSON from markdown code blocks if present
+      const jsonMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+      const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
+      parsed = JSON.parse(jsonText);
+    } catch (error) {
+      console.warn('[NPCDecisionEngine] Failed to parse LLM dialogue JSON, using raw text:', error.message);
+      parsed.text = response.content.trim();
+      parsed.emotion = mood;
+    }
 
-    // If a secret was revealed, add a hint action
-    if (topic === 'secret' && template.secrets) {
-      const unrevealed = template.secrets.filter((s) => !npc.secrets_revealed.includes(s.keyword));
-      if (unrevealed.length > 0) {
-        const secret = unrevealed[0];
-        actions.push({
-          action: 'hint',
-          confidence: 0.8,
-          reasoning: 'Secret revealed via LLM dialogue',
-          metadata: { clue_id: secret.clue_id },
-        });
+    const text = (parsed.text || response.content.trim() || '【NPC 沉默不语】').substring(0, 1000);
+    const emotion = parsed.emotion || mood || 'neutral';
+    const secretRevealed = parsed.secretRevealed || null;
+
+    // If a secret was revealed, track it
+    if (secretRevealed && template.secrets) {
+      const secret = template.secrets.find((s) => s.keyword === secretRevealed);
+      if (secret && !npc.secrets_revealed.includes(secretRevealed)) {
+        npc.secrets_revealed.push(secretRevealed);
       }
     }
 
-    return { dialogue, actions };
+    return { text, emotion, secretRevealed };
   }
 
   /**
    * Template-based dialogue generation (fallback)
    * @private
+   * @returns {{text: string, emotion: string, secretRevealed?: string}}
    */
   _generateTemplateDialogue(contextSummary, mood, topic) {
     const template = this.npcTemplate;
     const npc = this.npcState;
 
     // Build dialogue from template + mood + topic
-    let dialogue = '';
-    let actions = [];
+    let text = '';
+    let secretRevealed = null;
 
     // 1. Mood-based opening
     const moodOpenings = {
@@ -758,47 +767,45 @@ Respond with what you say or do.`;
     };
 
     const openings = moodOpenings[mood] || moodOpenings['calm'];
-    dialogue = openings[Math.floor(Math.random() * openings.length)] + '\n\n';
+    text = openings[Math.floor(Math.random() * openings.length)] + '\n\n';
 
     // 2. Topic-based response
     if (topic && template.dialogue?.[topic]) {
-      dialogue += template.dialogue[topic];
+      text += template.dialogue[topic];
     } else if (topic === 'secret' && template.secrets) {
       const unrevealed = template.secrets.filter((s) => !npc.secrets_revealed.includes(s.keyword));
       if (unrevealed.length > 0) {
         const secret = unrevealed[0];
-        dialogue += secret.reveal_text || '“我知道一些事情……但不能在这里说。”';
-        actions.push({
-          action: 'hint',
-          confidence: 0.8,
-          reasoning: 'Secret revealed',
-          metadata: { clue_id: secret.clue_id },
-        });
+        text += secret.reveal_text || '“我知道一些事情……但不能在这里说。”';
+        secretRevealed = secret.keyword;
+        if (!npc.secrets_revealed.includes(secret.keyword)) {
+          npc.secrets_revealed.push(secret.keyword);
+        }
       }
     } else if (template.dialogue?.default) {
-      dialogue += template.dialogue.default;
+      text += template.dialogue.default;
     } else {
-      dialogue += '【NPC 没有回应】';
+      text += '【NPC 没有回应】';
     }
 
     // 3. Trust-based additional content
     if (npc.trust > 70 && template.dialogue?.trusted) {
-      dialogue += `\n\n${template.dialogue.trusted}`;
+      text += `\n\n${template.dialogue.trusted}`;
     }
     if (npc.suspicion > 70 && template.dialogue?.suspicious) {
-      dialogue += `\n\n${template.dialogue.suspicious}`;
+      text += `\n\n${template.dialogue.suspicious}`;
     }
 
     // 4. Attitude-based closing
     if (npc.attitude === 'hostile' || npc.attitude === 'hostile_alerted') {
-      dialogue += '\n\n【NPC 的态度明显充满敌意】';
+      text += '\n\n【NPC 的态度明显充满敌意】';
     } else if (npc.attitude === 'afraid') {
-      dialogue += '\n\n【NPC 的身体在颤抖】';
+      text += '\n\n【NPC 的身体在颤抖】';
     } else if (npc.attitude === 'friendly') {
-      dialogue += '\n\n【NPC 对你露出微笑】';
+      text += '\n\n【NPC 对你露出微笑】';
     }
 
-    return { dialogue, actions };
+    return { text, emotion: mood || 'neutral', secretRevealed };
   }
 
   /**

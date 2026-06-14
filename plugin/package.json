@@ -1,29 +1,26 @@
 {
-  "name": "sillytavern-ai-gm-plugin",
+  "name": "sillytavern-ai-gm-extension",
   "version": "0.1.0",
-  "description": "AI-GM backend plugin for SillyTavern",
-  "main": "server.js",
+  "description": "AI-GM Extension for SillyTavern — Cthulhu-style solo TRPG experience with LLM-driven storytelling, state panel, NPC decision, scene rendering, and dice resolution system.",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node test/index.js",
-    "test:dice": "node test/index.js --grep Dice",
-    "test:rules": "node test/index.js --grep Rule",
-    "test:combat": "node test/index.js --grep Combat",
-    "test:state": "node test/index.js --grep State",
+    "test": "node test/index.js && node test/extension-mount.js && node test/ui-integration.js",
+    "test:engine": "node test/index.js",
+    "test:extension": "node test/extension-mount.js",
+    "test:ui": "node test/ui-integration.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\" --no-error-on-unmatched-pattern",
     "format:check": "prettier --check \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\" --no-error-on-unmatched-pattern",
-    "check": "node --check index.js && node --check engine/*.js && node --check utils/*.js && node --check storage/*.js",
-    "dev": "node --watch index.js",
-    "dev:mock": "MOCK_MODE=true node --watch index.js"
+    "check": "node --check index.js && node --check server.js && node --check engine/*.js && node --check utils/*.js && node --check storage/*.js && node --check ui/*.js",
+    "dev:backend": "node --watch server.js",
+    "dev:mock": "MOCK_MODE=true node --watch server.js"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.0.0"
-  },
+  "dependencies": {},
   "keywords": [
     "sillytavern",
-    "plugin",
+    "extension",
     "ttrpg",
     "ai",
     "gm"
@@ -34,7 +31,6 @@
     "@eslint/js": "^9.0.0",
     "eslint": "^10.4.1",
     "globals": "^15.0.0",
-    "jsdom": "^29.1.1",
     "prettier": "^3.8.3"
   }
 }

@@ -2,7 +2,7 @@
 
 **项目**: sillytavern-ai-gm  
 **当前阶段**: Phase 3 Surface（UI 层开发）  
-**最后更新**: 2026-06-10  
+**最后更新**: 2026-06-13  
 
 ---
 
@@ -16,8 +16,8 @@
 | **状态机** | ✅ Day2 完成 | 70% | 场景切换 + interact动作 + 事件触发 + 检定联动 + 结局 |
 | **规则引擎** | ✅ Day2 完成 | 70% | d100检定 + DB计算 + 伤害公式 + 最大骰子 + 中文narration |
 | **骰子系统** | ✅ 完成 | 80% | 多面骰 + 表达式 + 历史记录 |
-| **战斗系统** | ✅ Day2 完成 | 70% | 先攻 + 回合 + 攻击结算 + 敌人AI + HP同步 + 战斗日志 |
-| **NPC 决策** | 🚧 骨架 | 25% | 规则驱动 + LLM 占位 |
+| **战斗系统** | ✅ Day2 完成 | 75% | 先攻 + 回合 + 攻击结算 + 敌人AI(LLM+规则) + HP同步 + 战斗日志 |
+| **NPC 决策** | ✅ Day2 完成 | 80% | 规则驱动 + LLM增强决策 + 模板对话 + AI对话(LLM优先) + 秘密追踪 |
 | **存档系统** | ✅ Day2 完成 | 60% | 5存档位内存存档 + 存档列表 + 日志系统 |
 | **提示词构建** | ✅ 完成 | 70% | GM/NPC/场景/战斗/SAN 提示词 |
 | **测试模组** | ✅ 完成 | 100% | 「阿卡姆之夜」5 场景 4 NPC 2 结局 |
@@ -416,20 +416,210 @@
 - 总结 Day 2 Engine 成果 + 问题追踪 + 更新明日规划
 
 ### 21:00 NPC 与战斗 AI 接入 LLM
-- 修改 `plugin/engine/npc-decision.js` — `generateDialogue()` 接入 LLM：
-  - 新增 `_generateLLMDialogue()`：使用 `llmClient.chat()` 生成 NPC 角色扮演对话
-  - 构建 prompt：NPC 背景 + 情绪 + 话题 + 已知秘密
-  - 优先 LLM，fallback 模板驱动
-- 修改 `plugin/engine/combat-tracker.js` — 敌人 AI 接入 LLM：
-  - 新增 `_llmEnemyDecision()`：构建 prompt 让敌人选择 attack/flee/spell/item
-  - 优先 LLM，fallback 规则驱动（HP<20%逃跑等）
+- ✅ 修改 `plugin/engine/npc-decision.js` — `generateDialogue()` 接入 LLM：
+  - 新增 `_generateLLMDialogue()`：使用 `llmClient.chat()` 生成 NPC 角色扮演对话，返回结构化 JSON `{text, emotion, secretRevealed}`
+  - 构建 prompt：NPC 背景 + 情绪 + 话题 + 已知秘密 + 信任/恐惧/怀疑状态
+  - 优先 LLM，fallback 模板驱动；LLM 失败时自动降级
+  - 修改 `_generateTemplateDialogue()` 同样返回 `{text, emotion, secretRevealed}` 统一格式
+  - 支持秘密追踪：LLM 或模板揭示秘密时自动写入 `npc.secrets_revealed`
+- ✅ 修改 `plugin/engine/combat-tracker.js` — 敌人 AI 接入 LLM：
+  - 新增 `_llmEnemyDecision()`：构建 prompt 让敌人选择 attack/flee/spell/item，返回结构化决策含 confidence
+  - 置信度 > 0.7 时采用 LLM 决策，否则 fallback 到规则驱动（HP<20%逃跑、HP<50%魔法、默认攻击）
+  - LLM 失败/解析错误时自动降级到规则驱动
+  - `resolveEnemyAction()` 扩展支持 `spell` 和 `item` 类型
+- ✅ 新增测试：`plugin/test/npc-llm-dialogue.test.js`（16 个测试用例），全部通过
+- ✅ 语法检查：`node -c` 验证两个文件通过
+- ✅ Git 提交：待 Phase 完成时统一做
+
+---
+
+## 今日完成（2026-06-11 Day 2 Engine）—— 完整汇总
+
+### 08:00 ST Extension 面板挂载
+- ✅ `plugin/manifest.json` — Extension 注册信息
+- ✅ `plugin/index.js` — 前端 Extension 入口，导出 `init()`/`onEnable()`/`onDisable()`
+- ✅ ST 工具栏注入 AI-GM 图标，点击展开/收起主面板
+- ✅ 动态加载 `panel.js` + `game-controller.js`
+- ✅ 绑定 ST 事件：`CHAT_CHANGED`、`MESSAGE_RECEIVED`
+- ✅ 后端代码迁移至 `plugin/server.js`
+- ✅ 测试：`plugin/test/extension-mount.js` 4/4 通过
+
+### 10:00 ST Extension 面板挂载（修复）
+- ✅ 修复 `server.js` 导出格式：补充 `info` 对象 + `init()` 函数
+- ✅ 修复 `index.js` 中 `extensions.js` 导入路径
+- ✅ 后端路由挂载到 `/api/plugins/ai-gm`
+- ✅ 语法检查全部通过
+
+### 13:00 意图解析 LLM 升级
+- ✅ 修改 `plugin/engine/state-machine.js` — `parseIntent()` 重构为 LLM 优先 → keyword fallback
+- ✅ 新增 `_llmParseIntent()`：调用 `llmClient.chat()` 获取结构化 JSON `{action, target, confidence}`
+- ✅ 置信度 > 0.7 时采用 LLM 结果，否则降级到 keyword 匹配
+- ✅ 新增测试：`plugin/test/state-machine-intent.test.js`（18 个测试），41/41 全部通过
+- ✅ Git 提交：`10641b0`
+
+### 21:00 NPC 与战斗 AI 接入 LLM
+- ✅ 修改 `plugin/engine/npc-decision.js` — `generateDialogue()` LLM 优先，返回 `{text, emotion, secretRevealed}`
+- ✅ 修改 `plugin/engine/combat-tracker.js` — 敌人 AI `_llmEnemyDecision()` 置信度 > 0.7 采用
+- ✅ 新增测试：`plugin/test/npc-llm-dialogue.test.js`（16 个测试），全部通过
+- ✅ 语法检查通过
+
+---
+
+## 完成度更新
+
+| 模块 | 状态 | 完成度 | 说明 |
+|------|------|--------|------|
+| **前端 Extension** | ✅ Day1+Surface | 75% | 存档槽位UI + 战斗日志 + HP同步 + panel日志折叠 + 连接状态 |
+| **后端 Plugin** | ✅ Day2 完成 | 70% | combat_summary + save/list + 玩家HP同步 + LLM配置端点 |
+| **模组解析器** | ✅ 基础 | 40% | JSON 解析 + Markdown 占位 |
+| **状态机** | ✅ Day2 完成 | 75% | 场景切换 + interact动作 + 事件触发 + 检定联动 + 结局 + LLM意图解析 |
+| **规则引擎** | ✅ Day2 完成 | 70% | d100检定 + DB计算 + 伤害公式 + 最大骰子 + 中文narration |
+| **骰子系统** | ✅ 完成 | 80% | 多面骰 + 表达式 + 历史记录 + 解析缓存 |
+| **战斗系统** | ✅ Day2 完成 | 75% | 先攻 + 回合 + 攻击结算 + 敌人AI(LLM+规则) + HP同步 + 战斗日志 |
+| **NPC 决策** | ✅ Day2 完成 | 80% | 规则驱动 + LLM增强决策 + 模板对话 + AI对话(LLM优先) + 秘密追踪 |
+| **存档系统** | ✅ Day2 完成 | 60% | 5存档位内存存档 + 存档列表 + 日志系统 |
+| **提示词构建** | ✅ 完成 | 70% | GM/NPC/场景/战斗/SAN 提示词 |
+| **LLM 客户端** | ✅ Phase 2 | 90% | 多 provider 支持 + 缓存 + 重试 + 配置端点 + JSON输出 |
+| **测试模组** | ✅ 完成 | 100% | 「阿卡姆之夜」5 场景 4 NPC 2 结局 |
+| **限流方案** | ✅ 文档 | 100% | 已写入 docs/rate-limiting.md |
+| **测试框架** | ✅ 新增 | 85% | engine + utils + LLM 全模块测试，57/57 通过 |
+
+---
+
+## 下一步（Phase 3 Surface Day 2 → 2026-06-12）
+
+### 高优先级
+- [ ] 前端 Extension 集成 LLM 配置面板：provider 选择、模型输入、温度滑块、测试按钮
+- [ ] 状态机 `handleCombatInitiation()` 传递 `llmClient` 到战斗中的 NPC 决策
+- [ ] 场景渲染器增强：`plugin/ui/scene-renderer.js` — 氛围描述渲染、出口按钮动态生成、可交互物高亮
+
+### 中优先级
+- [ ] NPC 状态卡片：`plugin/ui/npc-card.js` — 动态更新 NPC HP/态度/对话气泡
+- [ ] Jest 正式测试框架（当前为断言测试）
+- [ ] SQLite 持久化（Phase 2）
+- [ ] Winston/Pino 日志系统
+
+### 低优先级
+- [ ] Markdown 模组解析器增强（YAML 库替代）
+- [ ] 引擎模块懒加载（减少启动时间）
+- [ ] 骰子解析器缓存优化（已部分实现）
+
+### 用户手册
+- [ ] 用户使用说明书：`docs/user-manual.md` — 安装指南、快速开始、界面说明、模组制作、FAQ
+
+---
+
+## 今日完成（2026-06-12 Day 2 Engine 验证）
+
+- ✅ `plugin/engine/npc-decision.js` LLM 对话生成验证：`_generateLLMDialogue()` + `generateDialogue()` 优先 LLM / fallback 模板，返回 `{text, emotion, secretRevealed}`
+- ✅ `plugin/engine/combat-tracker.js` 敌人 AI 验证：`_llmEnemyDecision()` + `decideEnemyAction()` 优先 LLM（confidence > 0.7）/ fallback 规则驱动
+- ✅ `plugin/test/npc-llm-dialogue.test.js` 16/16 测试全部通过（LLM 对话、模板回退、秘密揭示、战斗 AI 决策、置信度边界、解析失败降级）
+- ✅ `plugin/test/index.js` 56/56 测试全部通过（无回归）
+- ✅ `node --check` 语法验证：`npc-decision.js` + `combat-tracker.js` 通过
+- ✅ 状态更新：`project-status.md` 推进至 2026-06-13 规划
+
+---
+
+## 明日规划（2026-06-13 Day 3 Surface 续）
+
+**目标：让前端面板真正可配置 LLM，让场景渲染器完整可用，让 NPC 卡片动态更新。**
+
+### 09:00 LLM 配置面板（前端）
+- 修改 `plugin/ui/panel.js` — 在设置区域新增 LLM 配置区块：
+  - Provider 下拉选择（OpenAI / Claude / Ollama / SillyTavern）
+  - Model 输入框（默认 gpt-4o-mini）
+  - Base URL 输入框
+  - API Key 密码输入框（脱敏显示）
+  - Temperature 滑块（0.0-1.0，步长 0.1）
+  - 连接测试按钮：调用 `POST /llm/test`，显示测试结果
+  - 保存按钮：调用 `POST /llm/config`，保存配置到后端
+- 修改 `plugin/ui/game-controller.js` — 新增 `updateLLMConfig()` 方法，从面板读取配置并发送
+- 限制：每轮 1-2 文件，逐个完成
+
+### 13:00 场景渲染器增强
+- 修改 `plugin/ui/scene-renderer.js` — 完整场景渲染：
+  - 氛围描述渲染：CSS 渐变背景 + 氛围标签（horror/mystery/action）
+  - 出口按钮动态生成：根据 `scene.exits` 渲染带条件锁的出口（条件未满足时显示锁图标）
+  - 可交互物高亮：物品/NPC 点击弹出交互菜单（查看/拾取/对话/攻击）
+  - 场景切换动画：淡入淡出过渡效果
+- 限制：每轮 1-2 文件，逐个完成
+
+### 17:00 NPC 状态卡片
+- 创建 `plugin/ui/npc-card.js` — NPC 动态卡片：
+  - 显示 NPC 头像、名称、HP 条、态度标签（颜色区分）
+  - 对话气泡：点击 NPC 打开对话面板，显示最新 `generateDialogue()` 结果
+  - 态度变化动画： hostility/friendly/afraid 切换时标签变色动画
+  - 秘密揭示提示：当 `secretRevealed` 非空时，显示 🔍 图标提示新线索
+- 限制：每轮 1-2 文件，逐个完成
+
+### 21:00 状态机 combat initiation LLM 传递
+- 修改 `plugin/engine/state-machine.js` — `handleCombatInitiation()`：
+  - 创建 `NPCDecisionEngine` 时传入 `llmClient`
+  - 战斗中 NPC 回合调用 `decide()` 和 `generateDialogue()` 均使用 LLM
+  - 确保 `combat-tracker.js` 在 `processEnemyAutoTurn()` 中正确传递 `llmClient`
 - 限制：每轮 1-2 文件，逐个完成
 
 ### 最后一步（21:00 任务完成后）
-- 更新 `project-status.md` 中的"明日规划"部分，为 2026-06-12 制定具体任务安排
+- 更新 `project-status.md` 中的"明日规划"部分，为 2026-06-13 制定具体任务安排
 - 限制：每轮 1-2 文件，逐个完成
 
 ---
 
-*状态更新：2026-06-10 22:45*  
-*Git Commit: `3c07721` — feat(ui): Day 1 Surface 完成 + 全速规划制定*
+## 今日完成（2026-06-13 Day 2 Engine 验证）
+
+- ✅ `plugin/engine/npc-decision.js` LLM 对话生成验证：`_generateLLMDialogue()` + `generateDialogue()` 优先 LLM / fallback 模板，返回 `{text, emotion, secretRevealed}`
+- ✅ `plugin/engine/combat-tracker.js` 敌人 AI 验证：`_llmEnemyDecision()` + `decideEnemyAction()` 优先 LLM（confidence > 0.7）/ fallback 规则驱动
+- ✅ `plugin/test/npc-llm-dialogue.test.js` 17/17 测试全部通过（新增 `processEnemyAutoTurn` 全流程测试，LLM 对话、模板回退、秘密揭示、战斗 AI 决策、置信度边界、解析失败降级）
+- ✅ `plugin/test/index.js` 56/56 测试全部通过（无回归）
+- ✅ `node --check` 语法验证：`npc-decision.js` + `combat-tracker.js` + `npc-llm-dialogue.test.js` 通过
+- ✅ 状态更新：`project-status.md` 推进至 2026-06-14 规划
+
+---
+
+## 明日规划（2026-06-14 Day 3 Surface 续）
+
+**目标：让前端面板真正可配置 LLM，让场景渲染器完整可用，让 NPC 卡片动态更新。**
+
+### 09:00 LLM 配置面板（前端）
+- 修改 `plugin/ui/panel.js` — 在设置区域新增 LLM 配置区块：
+  - Provider 下拉选择（OpenAI / Claude / Ollama / SillyTavern）
+  - Model 输入框（默认 gpt-4o-mini）
+  - Base URL 输入框
+  - API Key 密码输入框（脱敏显示）
+  - Temperature 滑块（0.0-1.0，步长 0.1）
+  - 连接测试按钮：调用 `POST /llm/test`，显示测试结果
+  - 保存按钮：调用 `POST /llm/config`，保存配置到后端
+- 修改 `plugin/ui/game-controller.js` — 新增 `updateLLMConfig()` 方法，从面板读取配置并发送
+- 限制：每轮 1-2 文件，逐个完成
+
+### 13:00 场景渲染器增强
+- 修改 `plugin/ui/scene-renderer.js` — 完整场景渲染：
+  - 氛围描述渲染：CSS 渐变背景 + 氛围标签（horror/mystery/action）
+  - 出口按钮动态生成：根据 `scene.exits` 渲染带条件锁的出口（条件未满足时显示锁图标）
+  - 可交互物高亮：物品/NPC 点击弹出交互菜单（查看/拾取/对话/攻击）
+  - 场景切换动画：淡入淡出过渡效果
+- 限制：每轮 1-2 文件，逐个完成
+
+### 17:00 NPC 状态卡片
+- 创建 `plugin/ui/npc-card.js` — NPC 动态卡片：
+  - 显示 NPC 头像、名称、HP 条、态度标签（颜色区分）
+  - 对话气泡：点击 NPC 打开对话面板，显示最新 `generateDialogue()` 结果
+  - 态度变化动画：hostility/friendly/afraid 切换时标签变色动画
+  - 秘密揭示提示：当 `secretRevealed` 非空时，显示 🔍 图标提示新线索
+- 限制：每轮 1-2 文件，逐个完成
+
+### 21:00 状态机 combat initiation LLM 传递
+- 修改 `plugin/engine/state-machine.js` — `handleCombatInitiation()`：
+  - 创建 `NPCDecisionEngine` 时传入 `llmClient`
+  - 战斗中 NPC 回合调用 `decide()` 和 `generateDialogue()` 均使用 LLM
+  - 确保 `combat-tracker.js` 在 `processEnemyAutoTurn()` 中正确传递 `llmClient`
+- 限制：每轮 1-2 文件，逐个完成
+
+### 最后一步（21:00 任务完成后）
+- 更新 `project-status.md` 中的"明日规划"部分，为 2026-06-15 制定具体任务安排
+- 限制：每轮 1-2 文件，逐个完成
+
+---
+
+*状态更新：2026-06-13 21:00*
+*当日验证：NPC/战斗 AI LLM 测试全部通过，无回归*

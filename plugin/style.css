@@ -1,0 +1,35 @@
+/* AI-GM Extension Styles — SillyTavern Compatible */
+.ai-gm-inline-drawer .inline-drawer-content {
+  padding: 0.5rem 0;
+}
+
+.ai-gm-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ai-gm-controls .checkbox_label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.ai-gm-controls .text_pole {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-gm-controls .menu_button {
+  align-self: flex-start;
+}
+
+#ai-gm-menu-btn {
+  cursor: pointer;
+}
+
+#ai-gm-menu-btn:hover {
+  background: rgba(128, 128, 128, 0.15);
+}

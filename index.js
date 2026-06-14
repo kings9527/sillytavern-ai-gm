@@ -190,7 +190,7 @@ function bindPanelEvents() {
  */
 async function checkBackendHealth() {
   try {
-    const response = await fetch('/api/plugins/ai-gm/health');
+    const response = await fetch('/api/ai-gm/health');
     if (response.ok) {
       const data = await response.json();
       console.log('[AI-GM] Backend status:', data.status);
@@ -213,7 +213,7 @@ async function checkBackendHealth() {
  * @returns {Promise<object>} API response
  */
 async function gmApi(endpoint, method = 'GET', body = null, retries = 2) {
-  const url = `/api/plugins/ai-gm${endpoint}`;
+  const url = `/api/ai-gm${endpoint}`;
   const options = {
     method,
     headers: {

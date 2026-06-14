@@ -25,7 +25,7 @@ function testInitExport() {
 }
 
 function testRouterExport() {
-  assert(typeof router === 'object', 'router must be an object');
+  assert(typeof router === 'function' || typeof router === 'object', 'router must be a function or object');
   assert(typeof router.get === 'function', 'router.get must be a function');
   assert(typeof router.post === 'function', 'router.post must be a function');
   console.log('✅ testRouterExport passed');

@@ -50,6 +50,72 @@ function errorHandler(err, req, res, next) {
   });
 }
 
+/**
+ * Build a unified game state payload for the UI.
+ * @param {object} campaign — In-memory campaign object
+ * @param {object} module — Loaded module definition
+ * @returns {object} UI-ready state object
+ */
+function buildGameState(campaign, module) {
+  const scene = module?.scenes?.[campaign?.current_scene] || {};
+  const npcs = [];
+
+  // Merge NPC module definition + runtime state
+  for (const npcId of Object.keys(module?.npcs || {})) {
+    const def = module.npcs[npcId];
+    const state = campaign?.npcs_state?.[npcId] || {};
+    npcs.push({
+      id: npcId,
+      name: def.name || npcId,
+      avatar: def.avatar || null,
+      attitude: state.attitude || def.attitude || 'neutral',
+      currentHp: state.hp ?? def.hp ?? 10,
+      maxHp: def.hp ?? 10,
+      currentSan: state.sanity ?? def.sanity ?? 50,
+      maxSan: def.sanity ?? 50,
+      statusEffects: state.status_effects || def.status_effects || [],
+      location: state.location || scene.title || '未知',
+      memorySummary: state.memory_summary || def.description || '',
+      isHostile: (state.attitude || def.attitude) === 'hostile',
+    });
+  }
+
+  return {
+    title: scene.title || '未知场景',
+    description: scene.description || '',
+    scene: {
+      id: scene.id || campaign?.current_scene,
+      title: scene.title || '',
+      description: scene.description || '',
+      atmosphere: scene.atmosphere || 'mystery',
+      backdrop: scene.backdrop || null,
+      interactables: scene.interactables || [],
+      world_info_keys: scene.world_info_keys || [],
+    },
+    npcs,
+    exits: (scene.exits || []).map((e) => ({ label: e.label || e.target, target: e.target })),
+    player: {
+      name: campaign?.player?.name || '未知',
+      location: scene.title || '',
+      stats: {
+        hp: campaign?.player?.hp ?? campaign?.player?.stats?.HP ?? 10,
+        maxHp: campaign?.player?.max_hp ?? campaign?.player?.stats?.HP ?? 10,
+        mp: campaign?.player?.stats?.MP ?? 0,
+        maxMp: campaign?.player?.stats?.MP ?? 0,
+        san: campaign?.player?.sanity ?? campaign?.player?.stats?.SAN ?? 50,
+        maxSan: campaign?.player?.max_sanity ?? campaign?.player?.stats?.SAN ?? 50,
+      },
+      inventory: campaign?.player?.inventory || [],
+      status_effects: campaign?.player?.status_effects || [],
+    },
+    log: (campaign?.session_log || []).slice(-50).map((entry) => ({
+      type: entry.type || 'system',
+      content: entry.content || '',
+      timestamp: entry.timestamp,
+    })),
+  };
+}
+
 // Initialize LLM client (lazy — creates on first use if env vars set)
 let llmClient = null;
 function getLLMClient() {
@@ -68,7 +134,7 @@ router.get('/health', (req, res) => {
 
 /**
  * Parse and validate a module
- * POST /api/plugins/ai-gm/module/parse
+ * POST /api/ai-gm/module/parse
  */
 router.post(
   '/module/parse',
@@ -87,7 +153,7 @@ router.post(
 
 /**
  * Load a built-in module
- * POST /api/plugins/ai-gm/module/load/:moduleId
+ * POST /api/ai-gm/module/load/:moduleId
  */
 router.post(
   '/module/load/:moduleId',
@@ -117,7 +183,7 @@ router.get('/module/list', (req, res) => {
 
 /**
  * Create a new campaign
- * POST /api/plugins/ai-gm/campaign/create
+ * POST /api/ai-gm/campaign/create
  */
 router.post(
   '/campaign/create',
@@ -173,8 +239,26 @@ router.post(
 );
 
 /**
+ * Get campaign state (for UI polling)
+ * GET /api/ai-gm/campaign/:id/state
+ */
+router.get(
+  '/campaign/:id/state',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const campaign = campaigns.get(id);
+    if (!campaign) {
+      return res.status(404).json({ success: false, error: 'Campaign not found' });
+    }
+    const module = loadedModules.get(campaign.module_id);
+    const state = buildGameState(campaign, module);
+    res.json({ success: true, state });
+  }),
+);
+
+/**
  * Process player action
- * POST /api/plugins/ai-gm/state/action
+ * POST /api/ai-gm/state/action
  */
 router.post(
   '/state/action',
@@ -963,14 +1047,14 @@ export const info = {
 
 /**
  * ST Plugin System entry point.
- * Registers all AI-GM API routes under /api/plugins/ai-gm
- * @param {import('express').Router} pluginRouter — router provided by SillyTavern
+ * Registers all AI-GM API routes under /api/ai-gm
+ * @param {import('express').Application} app — Express app provided by SillyTavern
  */
-export function init(pluginRouter) {
-  // Mount all existing routes
-  pluginRouter.use('/', router);
+export function init(app) {
+  // Mount all existing routes under /api/ai-gm
+  app.use('/api/ai-gm', router);
   // Global error handler for AI-GM routes
-  pluginRouter.use(errorHandler);
+  app.use('/api/ai-gm', errorHandler);
 }
 
-export { router, errorHandler };
+export { router, errorHandler, buildGameState };

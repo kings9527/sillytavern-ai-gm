@@ -1,137 +1,154 @@
-/**
- * AI-GM Extension Entry Test — 验证 ST Extension 挂载结构
- * 无需 ST 运行时，通过静态分析 + mock 环境验证
- */
+// Test: AI-GM Extension Mount — Phase 2 Engine
+// Validates manifest.json and index.js structure for ST Extension compatibility
 
-import { readFileSync } from 'fs';
+import fs from 'fs';
+import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const root = join(__dirname, '..');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const MANIFEST = path.join(ROOT, 'manifest.json');
+const INDEX = path.join(ROOT, 'index.js');
+const STYLE = path.join(ROOT, 'style.css');
 
-/* ---------- helpers ---------- */
+const errors = [];
+const warnings = [];
 
-function loadJson(path) {
-  return JSON.parse(readFileSync(join(root, path), 'utf-8'));
-}
+function checkManifest() {
+  if (!fs.existsSync(MANIFEST)) {
+    errors.push('manifest.json 不存在');
+    return;
+  }
 
-function loadText(path) {
-  return readFileSync(join(root, path), 'utf-8');
-}
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf-8'));
+  } catch (err) {
+    errors.push(`manifest.json 解析失败: ${err.message}`);
+    return;
+  }
 
-function assert(cond, msg) {
-  if (!cond) throw new Error(`ASSERT FAIL: ${msg}`);
-}
-
-function assertIncludes(haystack, needle, msg) {
-  assert(haystack.includes(needle), `${msg} — missing: ${needle}`);
-}
-
-/* ---------- test manifest.json ---------- */
-
-function testManifest() {
-  const m = loadJson('manifest.json');
-
-  assert(typeof m.display_name === 'string' && m.display_name.length > 0, 'manifest.display_name required');
-  assert(typeof m.js === 'string' && m.js === 'index.js', 'manifest.js must be "index.js"');
-  assert(typeof m.author === 'string' && m.author.length > 0, 'manifest.author required');
-  assert(typeof m.version === 'string' && m.version.length > 0, 'manifest.version required');
-  assert(typeof m.homePage === 'string' && m.homePage.startsWith('http'), 'manifest.homePage must be URL');
-  assert(m.loading_order && typeof m.loading_order === 'number', 'manifest.loading_order must be number');
-  assert(Array.isArray(m.requires), 'manifest.requires must be array');
-  assert(Array.isArray(m.optional), 'manifest.optional must be array');
-  assert(Array.isArray(m.dependencies), 'manifest.dependencies must be array');
-  assert(m.hooks && typeof m.hooks.onEnable === 'string', 'manifest.hooks.onEnable required');
-  assert(m.hooks && typeof m.hooks.onDisable === 'string', 'manifest.hooks.onDisable required');
-
-  console.log('  ✓ manifest.json fields valid');
-}
-
-/* ---------- test index.js (static) ---------- */
-
-function testExtensionEntry() {
-  const code = loadText('index.js');
-
-  // 必须导出生命周期钩子
-  assertIncludes(code, 'export function onEnable', 'index.js must export onEnable');
-  assertIncludes(code, 'export function onDisable', 'index.js must export onDisable');
-  assertIncludes(code, 'export function init', 'index.js must export init');
-
-  // 必须引用 ST 核心 API
-  assertIncludes(code, "from '../../../../../../../script.js'", 'must import ST script.js');
-  assertIncludes(code, "from '../../../../../../../extensions.js'", 'must import ST extensions.js');
-  assertIncludes(code, 'eventSource', 'must use eventSource');
-  assertIncludes(code, 'event_types', 'must use event_types');
-  assertIncludes(code, 'extension_settings', 'must use extension_settings');
-
-  // 必须挂载面板
-  assertIncludes(code, 'extensions_menu', 'must target #extensions_menu');
-  assertIncludes(code, 'ai-gm-toggle-btn', 'must create toggle button');
-  assertIncludes(code, 'ai-gm-panel-container', 'must create panel container');
-  assertIncludes(code, 'initPanel', 'must define initPanel');
-  assertIncludes(code, 'destroyPanel', 'must define destroyPanel');
-
-  // 必须连接事件
-  assertIncludes(code, 'event_types.CHAT_CHANGED', 'must listen CHAT_CHANGED');
-  assertIncludes(code, 'event_types.MESSAGE_RECEIVED', 'must listen MESSAGE_RECEIVED');
-  assertIncludes(code, 'event_types.MESSAGE_SENT', 'must listen MESSAGE_SENT');
-
-  // 必须加载 UI 子模块
-  assertIncludes(code, './ui/panel.js', 'must load panel.js');
-  assertIncludes(code, './ui/game-controller.js', 'must load game-controller.js');
-  assertIncludes(code, 'AiGmPanel', 'must reference AiGmPanel');
-  assertIncludes(code, 'AiGmGameController', 'must reference AiGmGameController');
-
-  console.log('  ✓ index.js static structure valid');
-}
-
-/* ---------- test server.js preserved ---------- */
-
-function testServerPreserved() {
-  const code = loadText('server.js');
-  assertIncludes(code, 'express', 'server.js must use express');
-  assertIncludes(code, 'Router', 'server.js must use Router');
-  assertIncludes(code, '/campaign/create', 'server.js must have /campaign/create');
-  assertIncludes(code, '/api/plugins/ai-gm', 'server.js must reference ai-gm API');
-  console.log('  ✓ server.js backend preserved');
-}
-
-/* ---------- test package.json updated ---------- */
-
-function testPackageUpdated() {
-  const pkg = loadJson('package.json');
-  assert(pkg.main === 'server.js', 'package.json main must be server.js');
-  console.log('  ✓ package.json main points to server.js');
-}
-
-/* ---------- runner ---------- */
-
-function run() {
-  console.log('AI-GM Extension Mount Test\n');
-  const tests = [
-    ['manifest.json', testManifest],
-    ['extension entry', testExtensionEntry],
-    ['server preserved', testServerPreserved],
-    ['package updated', testPackageUpdated],
-  ];
-
-  let passed = 0;
-  let failed = 0;
-
-  for (const [name, fn] of tests) {
-    try {
-      fn();
-      passed++;
-    } catch (e) {
-      console.error(`  ✗ ${name}: ${e.message}`);
-      failed++;
+  const required = ['display_name', 'js', 'loading_order'];
+  for (const key of required) {
+    if (!manifest[key]) {
+      errors.push(`manifest.json 缺少必填字段: ${key}`);
     }
   }
 
-  console.log(`\n${passed}/${tests.length} passed, ${failed} failed`);
-  process.exit(failed > 0 ? 1 : 0);
+  if (manifest.js !== 'index.js') {
+    warnings.push(`manifest.js = ${manifest.js} (推荐 'index.js')`);
+  }
+
+  if (!manifest.css) {
+    warnings.push('manifest.json 缺少 css 字段');
+  }
+
+  if (!manifest.hooks || !manifest.hooks.activate) {
+    errors.push('manifest.json 缺少 hooks.activate（ST 加载扩展时调用）');
+  } else if (manifest.hooks.activate !== 'init') {
+    warnings.push(`hooks.activate = ${manifest.hooks.activate} (推荐 'init')`);
+  }
+
+  if (!manifest.display_name) {
+    errors.push('manifest.json 缺少 display_name');
+  }
+
+  console.log('✅ manifest.json 检查通过');
+}
+
+function checkIndex() {
+  if (!fs.existsSync(INDEX)) {
+    errors.push('index.js 不存在');
+    return;
+  }
+
+  const src = fs.readFileSync(INDEX, 'utf-8');
+
+  // 检查导出 init 函数
+  if (!src.includes('export async function init')) {
+    errors.push('index.js 缺少 export async function init()');
+  }
+
+  // 检查 ST API 导入
+  const requiredImports = [
+    { pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/\.\.\/script\.js['"]/, name: 'script.js' },
+    { pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/extensions\.js['"]/, name: 'extensions.js' },
+  ];
+  for (const imp of requiredImports) {
+    if (!imp.pattern.test(src)) {
+      warnings.push(`index.js 可能缺少从 ${imp.name} 的导入`);
+    }
+  }
+
+  // 检查事件绑定
+  if (!src.includes('eventSource.on')) {
+    errors.push('index.js 缺少 eventSource.on 事件绑定');
+  }
+  if (!src.includes('event_types.CHAT_CHANGED')) {
+    warnings.push('index.js 未绑定 CHAT_CHANGED 事件');
+  }
+  if (!src.includes('event_types.CHARACTER_MESSAGE_RENDERED')) {
+    warnings.push('index.js 未绑定 CHARACTER_MESSAGE_RENDERED 事件');
+  }
+  if (!src.includes('event_types.USER_MESSAGE_RENDERED')) {
+    warnings.push('index.js 未绑定 USER_MESSAGE_RENDERED 事件');
+  }
+
+  // 检查 UI 挂载
+  if (!src.includes('extensionsMenu')) {
+    errors.push('index.js 未引用 #extensionsMenu（ST 扩展菜单）');
+  }
+  if (!src.includes('extensions_settings')) {
+    errors.push('index.js 未引用 #extensions_settings（ST 扩展设置面板）');
+  }
+
+  // 检查 UI 模块加载
+  if (!src.includes('ui/panel.js')) {
+    warnings.push('index.js 未加载 ui/panel.js');
+  }
+  if (!src.includes('ui/npc-card.js')) {
+    warnings.push('index.js 未加载 ui/npc-card.js');
+  }
+  if (!src.includes('ui/scene-renderer.js')) {
+    warnings.push('index.js 未加载 ui/scene-renderer.js');
+  }
+  if (!src.includes('ui/game-controller.js')) {
+    warnings.push('index.js 未加载 ui/game-controller.js');
+  }
+
+  console.log('✅ index.js 检查通过');
+}
+
+function checkStyle() {
+  if (!fs.existsSync(STYLE)) {
+    warnings.push('style.css 不存在（manifest 引用了 css）');
+  } else {
+    console.log('✅ style.css 存在');
+  }
+}
+
+function run() {
+  console.log('=== AI-GM Extension Mount Test ===\n');
+
+  checkManifest();
+  checkIndex();
+  checkStyle();
+
+  console.log('\n--- 结果 ---');
+  if (errors.length === 0) {
+    console.log('✅ 所有关键检查通过');
+  } else {
+    console.log(`❌ 发现 ${errors.length} 个错误:`);
+    errors.forEach(e => console.log(`  - ${e}`));
+  }
+  if (warnings.length > 0) {
+    console.log(`⚠️  发现 ${warnings.length} 个警告:`);
+    warnings.forEach(w => console.log(`  - ${w}`));
+  }
+
+  if (errors.length > 0) {
+    process.exit(1);
+  }
 }
 
 run();

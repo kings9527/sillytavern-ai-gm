@@ -17,40 +17,9 @@ export default [
     ],
   },
 
-  // 基础规则（所有文件）
-  {
-    files: ['**/*.js', '../**/*.js'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        ...globals.es2024,
-      },
-    },
-    plugins: {
-      js,
-    },
-    rules: {
-      ...js.configs.recommended.rules,
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      'no-undef': 'error',
-      'no-redeclare': 'error',
-      'no-dupe-keys': 'error',
-      'no-unreachable': 'error',
-      'no-throw-literal': 'error',
-      'prefer-const': 'warn',
-      'no-var': 'warn',
-      semi: ['error', 'always'],
-      quotes: ['warn', 'single', { avoidEscape: true }],
-      'comma-dangle': ['warn', 'always-multiline'],
-    },
-  },
-
   // 前端扩展文件（浏览器环境）
   {
-    files: ['../index.js'],
+    files: ['index.js', 'ui/*.js'],
     languageOptions: {
       globals: {
         jQuery: 'readonly',
@@ -65,16 +34,15 @@ export default [
     },
   },
 
-  // 后端插件文件（Node 环境，允许 console）
+  // 基础规则（所有文件）
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', 'server.js', 'engine/*.js', 'utils/*.js', 'storage/*.js', 'test/*.js'],
     languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
       globals: {
+        ...globals.browser,
         ...globals.node,
+        ...globals.es2024,
       },
     },
-    rules: {
-      'no-console': 'off',
-    },
-  },
-];

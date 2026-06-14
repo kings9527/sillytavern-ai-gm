@@ -287,4 +287,13 @@ function injectStyles(root) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { initPanel, updatePanel, appendLog, appendLogEntries, clearLog };
 }
-window.AiGmPanel = { initPanel, updatePanel, appendLog, appendLogEntries, clearLog };
+window.AiGmPanel = { 
+    initPanel, 
+    updatePanel, 
+    renderText: updatePanel, 
+    renderStats: renderPlayerStats, 
+    renderLog: appendLogEntries, 
+    appendLog, 
+    appendLogEntries, 
+    clearLog 
+};

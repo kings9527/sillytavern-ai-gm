@@ -441,6 +441,89 @@ export class CombatTracker {
   }
 
   /**
+   * LLM-powered enemy decision with confidence threshold
+   * @private
+   * @param {object} enemy - Enemy entity data
+   * @param {object} combatState - Current combat state snapshot
+   * @param {LLMClient} llmClient - LLM client instance
+   * @returns {Promise<{action: string, confidence: number, skill?: string, target?: string, reasoning?: string}|null>}
+   *   Returns null if LLM fails or confidence is below threshold
+   */
+  async _llmEnemyDecision(enemy, combatState, llmClient) {
+    const npcTemplate = this.campaign.module?.npcs?.[enemy.entity_id];
+    const npcName = npcTemplate?.name || enemy.name || enemy.entity_id;
+    const enemyHP = this.campaign.npcs_state[enemy.entity_id]?.current_hp || 0;
+    const maxHP = enemy.stats?.HP || 10;
+    const hpPercent = enemyHP / maxHP;
+
+    const availableSkills = enemy.combat_skills || ['格斗'];
+    const availableItems = npcTemplate?.items || [];
+
+    const systemPrompt = `You are a tactical TRPG enemy AI. Given the enemy's state, player status, and available abilities, choose the best action.
+Respond ONLY with a JSON object in this exact format:
+{"action": "attack|flee|spell|item", "skill": "skill_name_if_spell_or_attack", "target": "player_1", "confidence": 0.0-1.0, "reasoning": "brief tactical reasoning"}
+Rules:
+- If HP < 20%, strongly consider fleeing unless you are a boss or have a desperation ability.
+- If HP < 50% and you have a powerful spell/ability, consider using it.
+- "attack" uses basic combat skill.
+- "spell" uses magical/occult abilities (e.g., occult_magic, fireball).
+- "item" uses a consumable item or tool.
+- "flee" attempts to escape combat.
+- confidence reflects how certain this action is the optimal choice.`;
+
+    const userPrompt = `Enemy: ${npcName}
+Role: ${npcTemplate?.role || 'enemy'}
+HP: ${enemyHP}/${maxHP} (${Math.round(hpPercent * 100)}%)
+Attitude: ${this.campaign.npcs_state[enemy.entity_id]?.attitude || 'hostile'}
+Available Skills: ${availableSkills.join(', ')}
+Available Items: ${availableItems.length > 0 ? availableItems.join(', ') : 'none'}
+
+Player HP: ${this.campaign.player.hp}/${this.campaign.player.max_hp}
+Player SAN: ${this.campaign.player.sanity || 60}/${this.campaign.player.max_sanity || 60}
+Combat Round: ${combatState.round}
+Current Turn: ${combatState.current_turn}
+Defeated allies: ${combatState.defeated.length > 0 ? combatState.defeated.join(', ') : 'none'}`;
+
+    try {
+      const response = await llmClient.chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        { maxTokens: 256, temperature: 0.6 },
+      );
+
+      let parsed = null;
+      try {
+        const raw = response.content.trim();
+        const jsonMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
+        parsed = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.warn('[CombatTracker] LLM enemy decision returned non-JSON, using heuristics:', parseError.message);
+        return null;
+      }
+
+      if (!parsed || !parsed.action) {
+        return null;
+      }
+
+      const confidence = parseFloat(parsed.confidence) || 0.5;
+
+      return {
+        action: parsed.action,
+        confidence: Math.max(0, Math.min(1, confidence)),
+        skill: parsed.skill || availableSkills[0],
+        target: parsed.target || 'player_1',
+        reasoning: parsed.reasoning || 'LLM decision',
+      };
+    } catch (error) {
+      console.warn('[CombatTracker] LLM enemy decision failed:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Decide enemy action based on AI rules, with optional LLM enhancement
    * @param {object} enemy - Enemy entity data
    * @returns {Promise<object>} Enemy action decision
@@ -450,25 +533,18 @@ export class CombatTracker {
     const maxHP = enemy.stats?.HP || 10;
     const hpPercent = enemyHP / maxHP;
 
-    // LLM enhancement: get nuanced enemy behavior if client available
+    // 1. Try LLM-enhanced decision first (if available)
     if (this.llmClient && this.llmClient.isAvailable()) {
       try {
-        const npcTemplate = this.campaign.module?.npcs?.[enemy.entity_id];
-        const npcName = npcTemplate?.name || enemy.name || enemy.entity_id;
-        const systemPrompt = '你是TRPG敌人AI决策器。根据敌人状态和战场情况，选择最合理的行动。返回JSON格式：{"action": "attack|flee|skill", "skill": "技能名（可选）", "target": "player_1", "reasoning": "简要原因"}';
-        const userPrompt = `敌人：${npcName}\nHP：${enemyHP}/${maxHP} (${Math.round(hpPercent * 100)}%)\n可用技能：${enemy.combat_skills?.join(', ') || '无'}\n玩家HP：${this.campaign.player.hp}/${this.campaign.player.max_hp}`;
-
-        const result = await this.llmClient.chatJSON([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ], { maxTokens: 128, temperature: 0.6 });
-
-        if (result && result.action) {
+        const llmResult = await this._llmEnemyDecision(enemy, this.state, this.llmClient);
+        if (llmResult && llmResult.confidence > 0.7) {
           return {
-            type: result.action,
-            target: result.target || 'player_1',
-            skill: result.skill,
+            type: llmResult.action,
+            target: llmResult.target || 'player_1',
+            skill: llmResult.skill,
             llm_enhanced: true,
+            llm_confidence: llmResult.confidence,
+            llm_reasoning: llmResult.reasoning,
           };
         }
       } catch (err) {
@@ -476,13 +552,13 @@ export class CombatTracker {
       }
     }
 
-    // Rule-based fallback
+    // 2. Rule-based fallback
     if (hpPercent < 0.2) {
       return { type: 'flee', target: 'player_1' };
     }
 
     if (hpPercent < 0.5 && enemy.combat_skills?.includes('occult_magic')) {
-      return { type: 'skill', skill: 'occult_magic', target: 'player_1' };
+      return { type: 'spell', skill: 'occult_magic', target: 'player_1' };
     }
 
     return { type: 'attack', target: 'player_1', skill: '格斗' };
@@ -500,8 +576,11 @@ export class CombatTracker {
         return this.resolveAttack(enemy.entity_id, action.target, { skill: action.skill });
       case 'flee':
         return this.resolveFlee(enemy.entity_id);
+      case 'spell':
       case 'skill':
         return this.resolveSkillUse(enemy.entity_id, action.target, { skill: action.skill });
+      case 'item':
+        return { action: 'item', actor: enemy.entity_id, log: `${enemy.name} 使用了物品。` };
       default:
         return { action: 'idle', actor: enemy.entity_id, log: `${enemy.name} 犹豫了一下。` };
     }
