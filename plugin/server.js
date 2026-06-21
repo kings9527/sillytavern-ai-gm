@@ -263,7 +263,7 @@ router.get(
 router.post(
   '/state/action',
   asyncHandler(async (req, res) => {
-    const { campaign_id, action_type, action_data, player_input } = req.body;
+    const { campaign_id, action_type, action_data, player_input, chat_history } = req.body;
     const campaign = campaigns.get(campaign_id);
 
     if (!campaign) {
@@ -346,6 +346,7 @@ router.post(
       action_type,
       action_data,
       player_input,
+      chat_history,
     });
 
     // Log the action

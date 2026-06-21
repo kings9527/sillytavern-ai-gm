@@ -13,6 +13,10 @@ const Panel = window.AiGmPanel || {};
 const Npc = window.AiGmNpc || {};
 const Scene = window.AiGmScene || {};
 
+/* ---------- constants ---------- */
+const DEFAULT_API_BASE = '/api/ai-gm';
+const DEFAULT_CAMPAIGN = 'default';
+
 /* ---------- state ---------- */
 /** @type {string} */
 let apiBase = '';
@@ -41,14 +45,15 @@ const BACKOFF_MULTIPLIER = 2;
 
 /**
  * 初始化游戏控制器，连接 UI 组件到后端 API
- * @param {string} apiBaseUrl - 后端 API 根地址
- * @param {string} campaignId - 当前战役 ID
+ * 使用 ST 实际后端地址 /api/ai-gm/*（移除 mock URL 依赖）
+ * @param {string} apiBaseUrl - 后端 API 根地址，默认为 '/api/ai-gm'
+ * @param {string} campaignId - 当前战役 ID，默认为 'default'
  * @throws {Error} 当缺少必要 DOM 容器时抛出
  */
 function initGameController(apiBaseUrl, campaignId) {
-  if (!apiBaseUrl || !campaignId) {
-    throw new Error('GameController: apiBaseUrl 和 campaignId 都是必填参数');
-  }
+  // 使用 ST 后端相对路径，不再依赖外部 mock 服务器
+  apiBaseUrl = apiBaseUrl || DEFAULT_API_BASE;
+  campaignId = campaignId || DEFAULT_CAMPAIGN;
 
   apiBase = apiBaseUrl.replace(/\/+$/, '');
   campaign = campaignId;
@@ -173,6 +178,8 @@ async function handleAction(action) {
       campaign_id: campaign,
       action_type: action.type,
       action_data: action,
+      player_input: action.input || action.player_input || '',
+      chat_history: action.chat_history || '',
     });
 
     if (result && result.state) {

@@ -650,6 +650,196 @@ test('LLMClient throws when not available', async () => {
   }
 });
 
+// ModuleParser Phase2 Tests — Cthulhu-style Markdown module parsing
+console.log('\n--- ModuleParser Phase2 ---');
+const mdParserPhase2 = new ModuleParser('markdown');
+
+test('Parse YAML frontmatter with multi-line array', () => {
+  const md = `---
+id: array-test
+name: Array Test
+scenes:
+  - id: scene1
+    title: 场景一
+  - id: scene2
+    title: 场景二
+npcs:
+  - id: npc1
+    name: 张三
+    role: ally
+---
+
+# 场景：测试场景
+**id**: test_scene
+`;
+  const result = mdParserPhase2.parseMarkdown(md);
+  assert(result.id === 'array-test', 'Expected frontmatter id');
+  assert(result.scenes.scene1 !== undefined, 'Expected scene1 from frontmatter array');
+  assert(result.scenes.scene1.title === '场景一', 'Expected scene1 title');
+  assert(result.npcs.npc1 !== undefined, 'Expected npc1 from frontmatter array');
+  assert(result.npcs.npc1.name === '张三', 'Expected npc1 name');
+  assert(result.npcs.npc1.role === 'ally', 'Expected npc1 role');
+});
+
+test('Parse YAML frontmatter with nested object', () => {
+  const md = `---
+id: nested-test
+config:
+  difficulty: hard
+  time_limit: 30
+---
+
+# 场景：嵌套测试
+**id**: nested
+`;
+  const result = mdParserPhase2.parseMarkdown(md);
+  assert(result.config !== undefined, 'Expected config object');
+  assert(result.config.difficulty === 'hard', 'Expected nested difficulty');
+  assert(result.config.time_limit === 30, 'Expected time_limit as number');
+});
+
+test('Parse YAML frontmatter with multi-line string', () => {
+  const md = `---
+id: multiline-test
+description: |
+  这是一段
+  多行描述
+  用于测试
+---
+
+# 场景：多行测试
+**id**: multiline
+`;
+  const result = mdParserPhase2.parseMarkdown(md);
+  assert(result.description.includes('多行描述'), 'Expected multi-line description');
+});
+
+test('Parse scene skill checks with success/failure branches', () => {
+  const md = `
+# 场景：图书馆
+**id**: library
+
+古老的书架排列在两侧，空气中弥漫着霉味。
+
+### 检定点：书架调查
+**技能**：图书馆使用 50 或 侦查 60
+**成功**：发现隐藏书籍，前往 [密室](#secret_room)，获得线索 [古老卷轴]
+**失败**：一无所获，理智损失 1d3
+
+### 检定点：门锁
+**技能**：锁匠 40
+**难度**：困难
+**成功**：打开门锁，前往 [地下室](#basement)
+**失败**：触发警报
+`;
+  const result = mdParserPhase2.parseMarkdown(md);
+  const scene = result.scenes.library;
+  assert(scene.skill_checks.length === 2, `Expected 2 skill checks, got ${scene.skill_checks.length}`);
+
+  const check1 = scene.skill_checks[0];
+  assert(check1.name === '书架调查', 'Expected check1 name');
+  assert(check1.skills.length === 2, 'Expected 2 skills');
+  assert(check1.skills[0].name === '图书馆使用', 'Expected skill name');
+  assert(check1.skills[0].target === 50, 'Expected skill target 50');
+  assert(check1.success.goto === 'secret_room', 'Expected success goto');
+  assert(check1.success.effects.some(e => e.type === 'add_clue'), 'Expected add_clue effect');
+  assert(check1.failure.effects.some(e => e.type === 'sanity_loss'), 'Expected sanity_loss effect');
+
+  const check2 = scene.skill_checks[1];
+  assert(check2.name === '门锁', 'Expected check2 name');
+  assert(check2.difficulty === 'hard', 'Expected hard difficulty');
+  assert(check2.skills[0].name === '锁匠', 'Expected locksmith skill');
+});
+
+test('Parse conditional exits with skill_check', () => {
+  const md = `
+# 场景：大门
+**id**: gate
+
+大门紧锁。
+
+## 出口
+- [地下室](basement) — 条件: 锁匠 40
+- [侧门](side_door) — 条件: 侦查 50 或 力量 60
+- [密道](secret_path) — 条件: flag(has_key) 且 item(ancient_key)
+- [悬崖](cliff) — 条件: clue(ancient_map)
+- [大厅](hall) — 无条件
+`;
+  const result = mdParserPhase2.parseMarkdown(md);
+  const scene = result.scenes.gate;
+  assert(scene.exits.length === 5, `Expected 5 exits, got ${scene.exits.length}`);
+
+  const exit1 = scene.exits[0];
+  assert(exit1.condition.type === 'skill_check', 'Expected skill_check condition');
+  assert(exit1.condition.skill === '锁匠', 'Expected locksmith skill');
+  assert(exit1.condition.target === 40, 'Expected target 40');
+
+  const exit2 = scene.exits[1];
+  assert(exit2.condition.type === 'compound', 'Expected compound condition');
+  assert(exit2.condition.operator === 'or', 'Expected OR operator');
+  assert(exit2.condition.conditions.length === 2, 'Expected 2 sub-conditions');
+
+  const exit3 = scene.exits[2];
+  assert(exit3.condition.type === 'compound', 'Expected compound AND');
+  assert(exit3.condition.operator === 'and', 'Expected AND operator');
+
+  const exit4 = scene.exits[3];
+  assert(exit4.condition.type === 'clue', 'Expected clue condition');
+  assert(exit4.condition.clue_id === 'ancient_map', 'Expected clue_id');
+
+  const exit5 = scene.exits[4];
+  assert(exit5.condition === null, 'Expected no condition');
+});
+
+test('Parse full Cthulhu Markdown module', () => {
+  const md = `---
+id: cthulhu-sample
+name: 印斯茅斯的阴影
+version: 1.0.0
+system: coc7e
+author: 测试作者
+scenes:
+  - id: intro
+    title: 开场
+    description: 你来到印斯茅斯
+---
+
+# 场景：开场
+**id**: intro
+**start**: true
+**atmosphere**: 阴沉、潮湿
+
+你来到印斯茅斯，空气中弥漫着鱼腥和腐烂的味道。
+
+## 出口
+- [旅馆](inn) — 条件: 侦查 40
+- [码头](dock) — 无条件
+
+### 检定点：侦查周围
+**技能**：侦查 40
+**成功**：发现可疑的跟踪者，前往 [旅馆](#inn)
+**失败**：什么也没发现
+
+## NPC
+- [旅馆老板](npcs/innkeeper.md)
+
+## 线索
+### 线索：鱼腥味
+**发现**：侦查周围
+**内容**：这里的鱼腥味不正常，似乎来自更深的海域
+`;
+
+  const result = mdParserPhase2.parseMarkdown(md);
+  assert(result.id === 'cthulhu-sample', 'Expected module id');
+  assert(result.system === 'coc7e', 'Expected coc7e system');
+  assert(result.scenes.intro !== undefined, 'Expected intro scene');
+  assert(result.scenes.intro.is_start === true, 'Expected start scene');
+  assert(result.scenes.intro.skill_checks.length === 1, 'Expected 1 skill check');
+  assert(result.scenes.intro.exits.length === 2, 'Expected 2 exits');
+  assert(result.scenes.intro.clues.length === 1, 'Expected 1 clue');
+  assert(result.scenes.intro.clues[0].name === '鱼腥味', 'Expected clue name');
+});
+
 // Summary
 console.log('\n=== Test Summary ===');
 console.log(`Total: ${passCount + failCount}`);

@@ -1,363 +1,350 @@
-// AI-GM Extension Entry — SillyTavern Extension System
-// 作为 ST 内置扩展打包，通过 hooks.activate 调用 init()
-// 路径：public/scripts/extensions/ai-gm/index.js
+/**
+ * AI-GM Extension Entry — SillyTavern Extension Integration
+ * Day 2 Engine Part 1: ST Extension Panel Mount
+ *
+ * 注册到 ST Extension 系统，创建右侧工具栏图标和设置面板。
+ * 依赖（通过 window 全局）：
+ *   - window.AiGmPanel, window.AiGmNpc, window.AiGmScene, window.AiGmGameController
+ */
 
-import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
-import { getContext, renderExtensionTemplateAsync, extension_settings } from '../../../extensions.js';
+// ST 核心模块导入（路径兼容不同 ST 版本安装深度）
+// 实际路径可能因 ST 版本和扩展安装位置而异，这里使用常见路径
+import { eventSource, event_types } from '../../../../script.js';
+import { extensionsMenu, extension_settings, saveSettingsDebounced } from '../../../extensions.js';
 
-// 静态导入 UI 模块（webpack 正确打包，确保全局对象设置）
+// AI-GM 子模块加载（浏览器 ESM 通过绝对路径或构建工具解析）
 import './ui/panel.js';
 import './ui/npc-card.js';
 import './ui/scene-renderer.js';
 import './ui/game-controller.js';
+import { STChatBridge } from './utils/st-chat-bridge.js';
 
-const EXT_NAME = 'ai-gm';
-const EXT_DISPLAY = 'AI-GM';
+/* ---------- 常量 ---------- */
+const EXTENSION_NAME = 'ai-gm';
+const CSS_NS = 'ai-gm';
 
-let settings = {};
 const defaultSettings = {
   enabled: true,
-  apiUrl: '/api/ai-gm',
+  apiBaseUrl: '/api/ai-gm',
+  campaignId: 'default',
   autoStart: false,
+  pollInterval: 5000,
+  autoParse: true,
+  injectToChat: false,
 };
 
-let panelVisible = false;
-let panelContainer = null;
+/* ---------- 状态 ---------- */
+let isInitialized = false;
+let isEnabled = false;
 let gameController = null;
+let stChatBridge = null;
+let settings = { ...defaultSettings };
 
-/** ST Extension activate hook — 由 ST 扩展加载器调用 */
+/* ---------- 初始化入口（ST 调用） ---------- */
+
+/**
+ * ST Extension 激活钩子 — 由 manifest.json hooks.activate 指定
+ */
 export async function init() {
-  console.log(`[${EXT_DISPLAY}] Initializing extension...`);
+  if (isInitialized) return;
+
   loadSettings();
-  createExtensionButton();
-  createExtensionPanel();
+  createMenuButton();
+  createSettingsPanel();
   bindEvents();
-  bindBridgeEvents();
-  console.log(`[${EXT_DISPLAY}] Extension initialized successfully`);
+
+  isInitialized = true;
+  console.log(`[${EXTENSION_NAME}] Extension initialized`);
+
+  // 如果启用且设置了自动启动，则初始化游戏控制器
+  if (settings.enabled && settings.autoStart) {
+    await onEnable();
+  }
 }
 
-export function onEnable() {
-  console.log(`[${EXT_DISPLAY}] Enabled`);
-}
+/**
+ * 启用 AI-GM 功能
+ */
+export async function onEnable() {
+  if (isEnabled) return;
+  isEnabled = true;
 
-export function onDisable() {
-  console.log(`[${EXT_DISPLAY}] Disabled`);
+  const panel = document.getElementById(`${CSS_NS}-panel`);
+  const npc = document.getElementById(`${CSS_NS}-npc`);
+  const scene = document.getElementById(`${CSS_NS}-scene`);
+
+  if (window.AiGmPanel && panel) {
+    window.AiGmPanel.initPanel(panel);
+  }
+  if (window.AiGmNpc && npc) {
+    window.AiGmNpc.initNpcContainer(npc);
+  }
+  if (window.AiGmScene && scene) {
+    window.AiGmScene.initSceneRenderer(scene);
+  }
+
+  if (window.AiGmGameController) {
+    gameController = window.AiGmGameController;
+    gameController.initGameController(settings.apiBaseUrl, settings.campaignId);
+  }
+
+  // 启动聊天桥接器，将用户输入连接到游戏控制器
   if (gameController) {
-    window.AiGmGameController?.destroy?.();
+    stChatBridge = new STChatBridge(gameController, {
+      autoParse: settings.autoParse,
+      injectToChat: settings.injectToChat,
+      maxContextMessages: 20,
+    });
+    stChatBridge.start();
+  }
+
+  updateStatus('🟢 AI-GM 已启用');
+  console.log(`[${EXTENSION_NAME}] Game enabled`);
+}
+
+/**
+ * 禁用 AI-GM 功能，清理资源
+ */
+export function onDisable() {
+  if (!isEnabled) return;
+  isEnabled = false;
+
+  if (stChatBridge) {
+    stChatBridge.stop();
+    stChatBridge = null;
+  }
+
+  if (gameController && gameController.destroy) {
+    gameController.destroy();
     gameController = null;
   }
+
+  updateStatus('⚪ AI-GM 已禁用');
+  console.log(`[${EXTENSION_NAME}] Game disabled`);
 }
 
-function loadSettings() {
-  if (!extension_settings[EXT_NAME]) {
-    extension_settings[EXT_NAME] = { ...defaultSettings };
-  }
-  settings = extension_settings[EXT_NAME];
-}
+/* ---------- UI 构建 ---------- */
 
-function createExtensionButton() {
+/**
+ * 在 ST 扩展菜单 (#extensionsMenu) 中创建 AI-GM 按钮
+ */
+function createMenuButton() {
   const menu = document.getElementById('extensionsMenu');
   if (!menu) {
-    console.warn(`[${EXT_DISPLAY}] #extensionsMenu not found, retry in 1s`);
-    setTimeout(createExtensionButton, 1000);
+    console.warn(`[${EXTENSION_NAME}] #extensionsMenu not found`);
     return;
   }
 
-  const existing = document.getElementById('ai-gm-menu-btn');
-  if (existing) {
-    console.log(`[${EXT_DISPLAY}] Menu button already exists`);
-    return;
-  }
+  const existing = document.getElementById(`${CSS_NS}-menu-btn`);
+  if (existing) return;
 
-  const button = document.createElement('div');
-  button.id = 'ai-gm-menu-btn';
-  button.className = 'list-group-item flex-container flexGap5';
-  button.innerHTML = `
-    <div class="fa-solid fa-gamepad extensionsMenuExtensionButton"></div>
-    <span data-i18n="ext_ai_gm_btn">AI-GM</span>
-  `;
-  button.title = 'AI-GM 游戏面板';
-  button.addEventListener('click', () => togglePanel());
-  menu.appendChild(button);
-  console.log(`[${EXT_DISPLAY}] Menu button created in #extensionsMenu`);
+  const btn = document.createElement('div');
+  btn.id = `${CSS_NS}-menu-btn`;
+  btn.className = 'list-group-item flex-container flexGap5 interactable';
+  btn.innerHTML = '<span class="fa-solid fa-gamepad"></span> AI-GM';
+  btn.title = 'AI-GM 克苏鲁跑团主持人';
+
+  btn.addEventListener('click', () => toggleSettingsPanel());
+  menu.appendChild(btn);
 }
 
-async function createExtensionPanel() {
+/**
+ * 在 ST 扩展设置面板 (#extensions_settings) 中创建设置面板
+ */
+function createSettingsPanel() {
   const settingsPanel = document.getElementById('extensions_settings');
   if (!settingsPanel) {
-    console.warn(`[${EXT_DISPLAY}] #extensions_settings not found, retry in 1s`);
-    setTimeout(createExtensionPanel, 1000);
+    console.warn(`[${EXTENSION_NAME}] #extensions_settings not found`);
     return;
   }
 
-  if (document.getElementById('ai-gm-settings-container')) {
-    console.log(`[${EXT_DISPLAY}] Settings panel already exists`);
-    return;
-  }
+  const existing = document.getElementById(`${CSS_NS}-settings-container`);
+  if (existing) return;
 
   const container = document.createElement('div');
-  container.id = 'ai-gm-settings-container';
-  container.className = 'extension_container';
+  container.id = `${CSS_NS}-settings-container`;
 
+  // 内部使用 inline-drawer 结构
   const drawer = document.createElement('div');
-  drawer.className = 'inline-drawer ai-gm-inline-drawer';
+  drawer.className = 'inline-drawer';
+
   drawer.innerHTML = `
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b data-i18n="ext_ai_gm_title">AI-GM</b>
+      <b>AI-GM 克苏鲁跑团</b>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
-    <div class="inline-drawer-content">
-      <div id="ai-gm-panel" style="display:none;"></div>
-      <div id="ai-gm-npc" style="display:none;"></div>
-      <div id="ai-gm-scene" style="display:none;"></div>
-      <div id="ai-gm-status" style="display:none;"></div>
-      <div class="ai-gm-controls">
-        <label class="checkbox_label">
-          <input type="checkbox" id="ai-gm-enabled" ${settings.enabled ? 'checked' : ''}>
-          <span data-i18n="ext_ai_gm_enabled">启用 AI-GM</span>
+    <div class="inline-drawer-content" id="${CSS_NS}-drawer-content" style="display: none;">
+      <div class="${CSS_NS}-controls">
+        <label class="checkbox_label" for="${CSS_NS}-enabled">
+          <input type="checkbox" id="${CSS_NS}-enabled" />
+          <span>启用 AI-GM 功能</span>
         </label>
-        <label class="checkbox_label">
-          <span data-i18n="ext_ai_gm_api_url">API 地址</span>
-          <input type="text" id="ai-gm-api-url" value="${settings.apiUrl}" class="text_pole">
+        <div class="flex-container flexGap5" style="margin-top: 0.3rem;">
+          <span>API 地址</span>
+          <input type="text" id="${CSS_NS}-api-url" class="text_pole" placeholder="/api/ai-gm" />
+        </div>
+        <div class="flex-container flexGap5" style="margin-top: 0.3rem;">
+          <span>战役 ID</span>
+          <input type="text" id="${CSS_NS}-campaign-id" class="text_pole" placeholder="default" />
+        </div>
+        <label class="checkbox_label" for="${CSS_NS}-auto-start" style="margin-top: 0.3rem;">
+          <input type="checkbox" id="${CSS_NS}-auto-start" />
+          <span>连接后自动启动</span>
         </label>
-        <div class="menu_button" id="ai-gm-start-btn">启动游戏</div>
-        <div class="menu_button" id="ai-gm-refresh-btn" style="display:none;">刷新状态</div>
+        <label class="checkbox_label" for="${CSS_NS}-auto-parse" style="margin-top: 0.3rem;">
+          <input type="checkbox" id="${CSS_NS}-auto-parse" />
+          <span>自动解析用户输入为游戏动作</span>
+        </label>
+        <label class="checkbox_label" for="${CSS_NS}-inject-chat" style="margin-top: 0.3rem;">
+          <input type="checkbox" id="${CSS_NS}-inject-chat" />
+          <span>将游戏结果注入聊天记录</span>
+        </label>
+        <button id="${CSS_NS}-save-btn" class="menu_button" style="margin-top: 0.5rem;">保存设置</button>
       </div>
+      <hr />
+      <div id="${CSS_NS}-panel" class="${CSS_NS}-panel-mount"></div>
+      <div id="${CSS_NS}-npc" class="${CSS_NS}-npc-mount"></div>
+      <div id="${CSS_NS}-scene" class="${CSS_NS}-scene-mount"></div>
+      <div id="${CSS_NS}-status" class="${CSS_NS}-status-bar">⚪ 等待连接</div>
     </div>
   `;
 
   container.appendChild(drawer);
+
   settingsPanel.appendChild(container);
 
-  // 绑定控制元素
-  const enableCheckbox = document.getElementById('ai-gm-enabled');
-  if (enableCheckbox) {
-    enableCheckbox.addEventListener('change', (e) => {
-      settings.enabled = e.target.checked;
-      extension_settings[EXT_NAME] = settings;
-      saveSettingsDebounced();
-      toggleRefreshButton();
-    });
-  }
-
-  const apiUrlInput = document.getElementById('ai-gm-api-url');
-  if (apiUrlInput) {
-    apiUrlInput.addEventListener('change', (e) => {
-      settings.apiUrl = e.target.value;
-      extension_settings[EXT_NAME] = settings;
-      saveSettingsDebounced();
-    });
-  }
-
-  const startBtn = document.getElementById('ai-gm-start-btn');
-  if (startBtn) {
-    startBtn.addEventListener('click', () => startGame());
-  }
-
-  const refreshBtn = document.getElementById('ai-gm-refresh-btn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      if (gameController && window.AiGmGameController?.refreshState) {
-        window.AiGmGameController.refreshState();
-      }
-    });
-  }
-
-  panelContainer = document.getElementById('ai-gm-panel');
-  console.log(`[${EXT_DISPLAY}] Settings panel created in #extensions_settings`);
-}
-
-function togglePanel() {
-  const container = document.getElementById('ai-gm-settings-container');
-  if (!container) {
-    console.warn(`[${EXT_DISPLAY}] Panel container not found`);
-    return;
-  }
-
+  // 绑定设置面板的展开/收起
   const toggle = container.querySelector('.inline-drawer-toggle');
   const content = container.querySelector('.inline-drawer-content');
-  if (!toggle || !content) {
-    console.warn(`[${EXT_DISPLAY}] Toggle or content element missing`);
-    return;
+  const icon = container.querySelector('.inline-drawer-icon');
+  if (toggle && content && icon) {
+    toggle.addEventListener('click', () => {
+      const isOpen = content.style.display === 'block';
+      content.style.display = isOpen ? 'none' : 'block';
+      icon.classList.toggle('down', !isOpen);
+    });
   }
 
-  panelVisible = !panelVisible;
-  content.style.display = panelVisible ? 'block' : 'none';
-
-  const icon = toggle.querySelector('.inline-drawer-icon');
-  if (icon) {
-    icon.classList.toggle('down', panelVisible);
-    icon.classList.toggle('fa-circle-chevron-down', panelVisible);
-    icon.classList.toggle('fa-circle-chevron-up', !panelVisible);
+  // 绑定保存按钮
+  const saveBtn = document.getElementById(`${CSS_NS}-save-btn`);
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveSettingsFromUI);
   }
 
-  if (panelVisible && !gameController && settings.enabled) {
-    startGame();
+  // 绑定启用开关
+  const enabledCheckbox = document.getElementById(`${CSS_NS}-enabled`);
+  if (enabledCheckbox) {
+    enabledCheckbox.checked = settings.enabled;
+    enabledCheckbox.addEventListener('change', () => {
+      settings.enabled = enabledCheckbox.checked;
+      if (settings.enabled) onEnable(); else onDisable();
+      saveSettings();
+    });
   }
-  toggleRefreshButton();
+
+  // 填充设置值
+  const apiUrlInput = document.getElementById(`${CSS_NS}-api-url`);
+  if (apiUrlInput) apiUrlInput.value = settings.apiBaseUrl || '';
+
+  const campaignInput = document.getElementById(`${CSS_NS}-campaign-id`);
+  if (campaignInput) campaignInput.value = settings.campaignId || '';
+
+  const autoStartCheckbox = document.getElementById(`${CSS_NS}-auto-start`);
+  if (autoStartCheckbox) autoStartCheckbox.checked = settings.autoStart || false;
+
+  const autoParseCheckbox = document.getElementById(`${CSS_NS}-auto-parse`);
+  if (autoParseCheckbox) autoParseCheckbox.checked = settings.autoParse !== false;
+
+  const injectChatCheckbox = document.getElementById(`${CSS_NS}-inject-chat`);
+  if (injectChatCheckbox) injectChatCheckbox.checked = settings.injectToChat || false;
 }
 
-function toggleRefreshButton() {
-  const refreshBtn = document.getElementById('ai-gm-refresh-btn');
-  if (!refreshBtn) return;
-  refreshBtn.style.display = (gameController && settings.enabled) ? 'inline-block' : 'none';
+/* ---------- 交互 ---------- */
+
+function toggleSettingsPanel() {
+  const container = document.getElementById(`${CSS_NS}-settings-container`);
+  if (!container) return;
+  const toggle = container.querySelector('.inline-drawer-toggle');
+  if (toggle) toggle.click();
 }
 
-function startGame() {
-  if (!settings.enabled) {
-    console.warn(`[${EXT_DISPLAY}] 无法启动：AI-GM 未启用`);
-    return;
-  }
+function updateStatus(text) {
+  const el = document.getElementById(`${CSS_NS}-status`);
+  if (el) el.textContent = text;
+}
 
-  if (!window.AiGmGameController) {
-    console.warn(`[${EXT_DISPLAY}] 无法启动：游戏控制器未加载（检查 ui/game-controller.js 是否已打包）`);
-    return;
-  }
+/* ---------- 设置持久化 ---------- */
 
-  const campaignId = getCurrentCampaignId();
-  if (!campaignId) {
-    console.warn(`[${EXT_DISPLAY}] 无法启动：无法获取战役 ID`);
-    return;
-  }
-
-  try {
-    // 确保所有容器可见
-    const ids = ['ai-gm-panel', 'ai-gm-npc', 'ai-gm-scene', 'ai-gm-status'];
-    for (const id of ids) {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'block';
-    }
-
-    window.AiGmGameController.initGameController(settings.apiUrl, campaignId);
-    gameController = window.AiGmGameController;
-    toggleRefreshButton();
-    console.log(`[${EXT_DISPLAY}] 游戏已启动: ${campaignId}`);
-  } catch (err) {
-    console.error(`[${EXT_DISPLAY}] 启动游戏失败:`, err);
+function loadSettings() {
+  const saved = extension_settings[EXTENSION_NAME];
+  if (saved && typeof saved === 'object') {
+    settings = { ...defaultSettings, ...saved };
+  } else {
+    settings = { ...defaultSettings };
   }
 }
 
-function getCurrentCampaignId() {
-  const context = getContext?.();
-  if (context?.chatId) {
-    return `st-${context.chatId}`;
+function saveSettings() {
+  extension_settings[EXTENSION_NAME] = { ...settings };
+  if (typeof saveSettingsDebounced === 'function') {
+    saveSettingsDebounced();
   }
-  if (context?.name) {
-    return `st-${context.name}`;
-  }
-  return `st-${Date.now()}`;
 }
+
+function saveSettingsFromUI() {
+  const apiUrlInput = document.getElementById(`${CSS_NS}-api-url`);
+  const campaignInput = document.getElementById(`${CSS_NS}-campaign-id`);
+  const autoStartCheckbox = document.getElementById(`${CSS_NS}-auto-start`);
+  const autoParseCheckbox = document.getElementById(`${CSS_NS}-auto-parse`);
+  const injectChatCheckbox = document.getElementById(`${CSS_NS}-inject-chat`);
+
+  if (apiUrlInput) settings.apiBaseUrl = apiUrlInput.value.trim() || defaultSettings.apiBaseUrl;
+  if (campaignInput) settings.campaignId = campaignInput.value.trim() || defaultSettings.campaignId;
+  if (autoStartCheckbox) settings.autoStart = autoStartCheckbox.checked;
+  if (autoParseCheckbox) settings.autoParse = autoParseCheckbox.checked;
+  if (injectChatCheckbox) settings.injectToChat = injectChatCheckbox.checked;
+
+  saveSettings();
+
+  // 如果已启用，重新初始化控制器以应用新设置
+  if (isEnabled && gameController) {
+    onDisable();
+    onEnable();
+  }
+
+  console.log(`[${EXTENSION_NAME}] Settings saved`);
+}
+
+/* ---------- 事件绑定 ---------- */
 
 function bindEvents() {
-  // 角色切换时重置游戏
+  // 角色切换 / 聊天切换时重置游戏状态
   eventSource.on(event_types.CHAT_CHANGED, () => {
-    console.log(`[${EXT_DISPLAY}] Chat changed, resetting game`);
-    if (gameController) {
-      window.AiGmGameController?.destroy?.();
-      gameController = null;
+    if (isEnabled && gameController) {
+      console.log(`[${EXTENSION_NAME}] Chat changed — refreshing state`);
+      gameController.refreshState?.();
     }
-    toggleRefreshButton();
-    if (settings.enabled && settings.autoStart) {
-      setTimeout(() => startGame(), 500);
+    if (stChatBridge) {
+      stChatBridge.onChatChanged();
     }
   });
 
-  // AI 消息生成完成
+  // AI 消息渲染完成时缓存到桥接器上下文
   eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (messageId) => {
-    if (!settings.enabled || !gameController) return;
-    const context = getContext?.();
-    const message = context?.chat?.find?.(m => m.id === messageId || m.index === messageId);
-    if (message) {
-      document.dispatchEvent(new CustomEvent('ai-gm:ai-message', {
-        detail: { message, messageId, source: 'character' },
-      }));
+    if (isEnabled && stChatBridge) {
+      stChatBridge.onCharacterMessage(messageId);
     }
   });
 
-  // 用户消息生成完成
+  // 用户消息渲染完成时发送到游戏控制器
   eventSource.on(event_types.USER_MESSAGE_RENDERED, (messageId) => {
-    if (!settings.enabled || !gameController) return;
-    const context = getContext?.();
-    const message = context?.chat?.find?.(m => m.id === messageId || m.index === messageId);
-    if (message) {
-      document.dispatchEvent(new CustomEvent('ai-gm:user-message', {
-        detail: { message, messageId, source: 'user' },
-      }));
+    if (isEnabled && stChatBridge) {
+      stChatBridge.onUserMessage(messageId);
     }
   });
-
-  console.log(`[${EXT_DISPLAY}] Events bound: CHAT_CHANGED, CHARACTER_MESSAGE_RENDERED, USER_MESSAGE_RENDERED`);
 }
 
-/** 桥接 UI 组件事件到游戏控制器 */
-function bindBridgeEvents() {
-  // NPC 动作（对话 / 调查 / 攻击）-> 转发到控制器
-  document.addEventListener('ai-gm:npc-action', (e) => {
-    if (!gameController || !window.AiGmGameController?.handleAction) return;
-    const { npcId, action } = e.detail || {};
-    if (!npcId || !action) return;
-
-    const actionMap = {
-      talk: 'npc_talk',
-      inspect: 'npc_inspect',
-      attack: 'npc_attack',
-    };
-    const actionType = actionMap[action] || action;
-    window.AiGmGameController.handleAction({ type: actionType, target: npcId });
-  });
-
-  // 场景交互（可交互物品）-> 转发到控制器
-  document.addEventListener('ai-gm:scene-interact', (e) => {
-    if (!gameController || !window.AiGmGameController?.handleAction) return;
-    const { item } = e.detail || {};
-    if (!item) return;
-    window.AiGmGameController.handleAction({ type: 'interact', target: item });
-  });
-
-  // 用户消息 -> 可以作为动作解析（简单文本 -> 移动/观察等）
-  document.addEventListener('ai-gm:user-message', (e) => {
-    if (!gameController || !window.AiGmGameController?.handleAction) return;
-    const { message } = e.detail || {};
-    if (!message?.mes) return;
-    const text = message.mes.trim();
-    if (!text) return;
-
-    // 简单解析：以 / 开头的命令视为 GM 动作
-    if (text.startsWith('/gm ')) {
-      const cmd = text.slice(4).trim();
-      window.AiGmGameController.handleAction({ type: 'command', command: cmd });
-    }
-  });
-
-  // AI 消息 -> 可以触发状态解析（如果 AI 返回结构化数据）
-  document.addEventListener('ai-gm:ai-message', (e) => {
-    if (!gameController) return;
-    const { message } = e.detail || {};
-    if (!message?.mes) return;
-    // 尝试解析消息中的 JSON 结构化数据（如 ```json {...} ```）
-    try {
-      const jsonMatch = message.mes.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[1]);
-        if (data.aiGmState && window.AiGmGameController?.syncToUI) {
-          window.AiGmGameController.syncToUI(data.aiGmState);
-        }
-      }
-    } catch (err) {
-      // 非结构化消息，忽略
-    }
-  });
-
-  // 连接状态变化 -> 刷新按钮状态
-  document.addEventListener('ai-gm:connection-change', (e) => {
-    const { status } = e.detail || {};
-    const startBtn = document.getElementById('ai-gm-start-btn');
-    if (startBtn) {
-      startBtn.textContent = status === 'online' ? '运行中' : '启动游戏';
-      startBtn.style.opacity = status === 'online' ? '0.6' : '1';
-    }
-  });
-
-  console.log(`[${EXT_DISPLAY}] Bridge events bound: npc-action, scene-interact, user-message, ai-message, connection-change`);
+/* ---------- 兼容模块导出（浏览器全局 + Node 测试） ---------- */
+if (typeof window !== 'undefined') {
+  window.AiGmExtension = { init, onEnable, onDisable };
 }
-
