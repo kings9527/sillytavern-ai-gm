@@ -164,29 +164,89 @@ export class LLMClient {
 
   /**
    * Generate JSON-structured output from LLM
+   * Works across all providers (OpenAI, Claude, Ollama, SillyTavern)
+   * by appending JSON formatting instructions rather than relying on
+   * provider-specific response_format parameters.
    * @param {LLMMessage[]} messages - Messages
-   * @param {Object} options - Options including jsonSchema for structured output
+   * @param {Object} options - Options
+   * @param {Object} [options.jsonSchema] - Optional JSON schema description
    * @returns {Promise<Object>} Parsed JSON object
    */
   async chatJSON(messages, options = {}) {
-    const response = await this.chat(messages, {
-      ...options,
-      responseFormat: { type: 'json_object' },
+    const jsonInstruction = options.jsonSchema
+      ? `\n\nYou must respond with a single JSON object that conforms to this schema:\n${JSON.stringify(options.jsonSchema, null, 2)}\nDo not include markdown code blocks, explanations, or any text outside the JSON object.`
+      : `\n\nYou must respond with a single JSON object. Do not include markdown code blocks, explanations, or any text outside the JSON object.`;
+
+    // Append JSON instruction to the last user message, or add a new user message
+    const modifiedMessages = messages.map((m, i) => {
+      if (i === messages.length - 1 && m.role === 'user') {
+        return { ...m, content: m.content + jsonInstruction };
+      }
+      return m;
     });
 
-    try {
-      // Try to extract JSON from markdown code blocks if present
-      const content = response.content.trim();
-      const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[1].trim());
-      }
-      return JSON.parse(content);
-    } catch (error) {
-      console.warn('[LLMClient] Failed to parse JSON response:', error.message);
-      console.warn('[LLMClient] Raw response:', response.content.substring(0, 200));
-      return { error: 'JSON parse failed', raw: response.content };
+    // If last message was not user, append a new user message
+    if (modifiedMessages[modifiedMessages.length - 1]?.role !== 'user') {
+      modifiedMessages.push({ role: 'user', content: jsonInstruction });
     }
+
+    const response = await this.chat(modifiedMessages, options);
+    return this._extractJSON(response.content);
+  }
+
+  /**
+   * Extract JSON object from raw text response
+   * Handles markdown code blocks, trailing text, and malformed JSON
+   * @private
+   * @param {string} rawText
+   * @returns {Object}
+   */
+  _extractJSON(rawText) {
+    const text = rawText.trim();
+
+    // 1. Try direct JSON parse
+    try {
+      return JSON.parse(text);
+    } catch {
+      // continue
+    }
+
+    // 2. Extract from markdown code blocks
+    const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      try {
+        return JSON.parse(codeBlockMatch[1].trim());
+      } catch {
+        // continue
+      }
+    }
+
+    // 3. Find the first '{' and last '}' that look like a JSON object
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd > jsonStart) {
+      try {
+        return JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+      } catch {
+        // continue
+      }
+    }
+
+    // 4. Find the first '[' and last ']' for JSON array
+    const arrStart = text.indexOf('[');
+    const arrEnd = text.lastIndexOf(']');
+    if (arrStart !== -1 && arrEnd > arrStart) {
+      try {
+        return JSON.parse(text.slice(arrStart, arrEnd + 1));
+      } catch {
+        // continue
+      }
+    }
+
+    // 5. Fallback: return raw text wrapped in an error object
+    console.warn('[LLMClient] Failed to parse JSON response, returning raw text');
+    console.warn('[LLMClient] Raw response:', text.substring(0, 200));
+    return { error: 'JSON parse failed', raw: text };
   }
 
   // ==================== Private Methods ====================
@@ -388,14 +448,13 @@ export class LLMClient {
 
   /**
    * SillyTavern proxy request
-   * Sends request to SillyTavern's backend generation API
+   * Uses SillyTavern's native OpenAI-compatible endpoint at /api/chat/completions
    * @private
    */
   async _sendSillyTavernRequest(messages, options) {
-    // In SillyTavern proxy mode, we use the generation API endpoint
-    // This would be configured to point to SillyTavern's server
-    // For now, treat as OpenAI-compatible endpoint at the proxy URL
-    const proxyUrl = options.baseUrl || 'http://localhost:5000/api';
+    // SillyTavern's native API endpoint is /api/chat/completions at the server base URL
+    const baseUrl = options.baseUrl || 'http://localhost:5000';
+    const endpoint = `${baseUrl}/api/chat/completions`;
 
     const body = {
       model: options.model,
@@ -411,7 +470,7 @@ export class LLMClient {
     const timeout = setTimeout(() => controller.abort(), options.timeout);
 
     try {
-      const response = await fetch(`${proxyUrl}/v1/chat/completions`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

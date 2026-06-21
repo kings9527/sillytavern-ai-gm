@@ -73,6 +73,12 @@ Current Scene: ${this.module.scenes[this.campaign.current_scene]?.title || 'Unkn
 
   buildSceneDescriptionPrompt(sceneId, transition) {
     const scene = this.module.scenes[sceneId];
+    if (!scene) {
+      return {
+        role: 'system',
+        content: `Describe the scene transition to the player.\n\nNew Scene: Unknown\nDescription: Scene not found\nTransition: ${transition || 'The player enters this area'}`,
+      };
+    }
     return {
       role: 'system',
       content: `Describe the scene transition to the player.
@@ -97,7 +103,7 @@ Requirements:
       content: `Narrate a combat action in dramatic prose.
 
 Action: ${action.actor} performs ${action.action}
-Result: ${action.hit ? 'Hit' : 'Miss'}${action.damage ? ` for ${action.damage} damage` : ''}
+Result: ${action.hit ? 'Hit' : 'Miss'}${action.damage != null ? ` for ${action.damage} damage` : ''}
 
 Requirements:
 1. Describe the attack/defense vividly

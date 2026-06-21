@@ -34,7 +34,7 @@ export class IntentParser {
   constructor(options = {}) {
     this.llmClient = options.llmClient || null;
     this.useLLM = options.useLLM !== false;
-    this.llmThreshold = options.llmThreshold || 0.6;
+    this.llmThreshold = options.llmThreshold ?? 0.6;
   }
 
   /**
@@ -548,6 +548,7 @@ export class IntentParser {
   _matchLook(input, lower, context) {
     const lookPatterns = [
       { regex: /^(?:环顾|四周|环顾四周)/, action: 'look' },
+      { regex: /^(?:look around|look about)\b/i, action: 'look' },
       { regex: /^(?:observe|survey|glance|peek|scan)\b/i, action: 'look' },
     ];
 
