@@ -1,18 +1,12 @@
 {
-  "name": "ai-gm",
-  "display_name": "AI-GM",
-  "description": "SillyTavern AI-GM 游戏扩展 — 将任意角色扮演对话转化为结构化克苏鲁跑团体验，提供状态面板、NPC决策、场景渲染和骰子判定系统。",
-  "loading_order": 20,
-  "requires": [],
-  "optional": [],
-  "dependencies": [],
+  "display_name": "AI-GM 克苏鲁跑团主持人",
   "js": "index.js",
   "css": "style.css",
-  "author": "kings9527",
-  "version": "0.1.0",
-  "homePage": "https://github.com/kings9527/sillytavern-ai-gm",
-  "auto_update": true,
-  "minimum_client_version": "1.18.0",
+  "loading_order": 50,
+  "author": "Kimi Claw",
+  "version": "0.3.0",
+  "homePage": "https://github.com/kimi-claw/sillytavern-ai-gm",
+  "description": "AI驱动的克苏鲁跑团主持人扩展，将SillyTavern转化为沉浸式COC TRPG体验",
   "hooks": {
     "activate": "init"
   }

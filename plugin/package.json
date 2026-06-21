@@ -5,10 +5,14 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node test/index.js && node test/extension-mount.js && node test/ui-integration.js",
+    "test": "node test/index.js && node test/extension-mount.js && node test/ui-integration.js && node test/campaign-storage.test.js && node test/npc-decision-advanced.test.js && node test/extension-lifecycle.test.js",
     "test:engine": "node test/index.js",
-    "test:extension": "node test/extension-mount.js",
+    "test:extension": "node test/extension-mount.js && node test/extension-lifecycle.test.js",
     "test:ui": "node test/ui-integration.js",
+    "test:campaign": "node test/campaign-storage.test.js",
+    "test:all": "node test/run-all.js",
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=json-summary node test/run-all.js",
+    "test:npc": "node test/npc-decision-advanced.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.js\" \"**/*.css\" \"**/*.json\" \"**/*.md\" --no-error-on-unmatched-pattern",
@@ -17,7 +21,9 @@
     "dev:backend": "node --watch server.js",
     "dev:mock": "MOCK_MODE=true node --watch server.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  },
   "keywords": [
     "sillytavern",
     "extension",
@@ -27,8 +33,34 @@
   ],
   "license": "AGPL-3.0",
   "author": "kings9527",
+  "c8": {
+    "all": true,
+    "include": [
+      "utils/**/*.js",
+      "engine/**/*.js",
+      "storage/**/*.js"
+    ],
+    "exclude": [
+      "test/**",
+      "node_modules/**",
+      "ui/**",
+      "contracts/**",
+      "index.js",
+      "server.js"
+    ],
+    "reporter": [
+      "text",
+      "html",
+      "json-summary"
+    ],
+    "lines": 80,
+    "functions": 80,
+    "branches": 70,
+    "statements": 80
+  },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "c8": "^11.0.0",
     "eslint": "^10.4.1",
     "globals": "^15.0.0",
     "prettier": "^3.8.3"
