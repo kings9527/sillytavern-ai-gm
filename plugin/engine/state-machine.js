@@ -4,12 +4,15 @@
  *
  * @version 0.2.0
  */
+import { DiceRoller } from './dice.js';
+
 export class GameStateMachine {
   constructor(module, campaign, llmClient = null) {
     this.module = module;
     this.campaign = campaign;
     this.currentScene = module.scenes[campaign.current_scene];
     this.llmClient = llmClient;
+    this.diceRoller = new DiceRoller();
   }
 
   /**
@@ -25,7 +28,7 @@ export class GameStateMachine {
     if (!action || typeof action !== 'object') {
       throw new Error('Invalid action: must be an object');
     }
-    const { action_type, player_input } = action;
+    const { action_type, player_input, chat_history } = action;
 
     // 1. Parse intent from player input
     const intent = await this.parseIntent(player_input || '', action_type);
@@ -62,7 +65,7 @@ export class GameStateMachine {
 
     // 6. Handle NPC interaction (now async with decision engine)
     if (intent.type === 'talk') {
-      return await this.handleTalk(intent, player_input);
+      return await this.handleTalk(intent, player_input, chat_history);
     }
 
     // 7. Handle combat initiation
@@ -660,7 +663,7 @@ Rules:
    * @param {string} input - Raw input for NPC matching
    * @returns {Promise<object>} Talk interaction result
    */
-  async handleTalk(intent, input = '') {
+  async handleTalk(intent, input = '', chatHistory = '') {
     const npcs = this.currentScene.npcs || [];
     if (npcs.length === 0) {
       return {
@@ -700,7 +703,7 @@ Rules:
       const decision = await engine.decide({
         type: 'player_talk',
         player_input: input,
-      }, this.llmClient);
+      }, this.llmClient, chatHistory);
 
       const dialogueResult = await engine.generateDialogue(
         `Player says: "${input}"`,
@@ -723,7 +726,7 @@ Rules:
         interaction_type: 'talk',
         npc_id: matchedNPC.id,
         scene: this.currentScene.id,
-        narration: `${matchedNPC.name}：${dialogueResult.dialogue}`,
+        narration: `${matchedNPC.name}：${dialogueResult.text || dialogueResult.dialogue || '【沉默】'}`,
         npc_decision: {
           action: decision.action,
           mood: decision.mood,
@@ -1076,21 +1079,18 @@ Rules:
 
   /**
    * Parse dice expression (e.g., "1d6", "2d10+3")
-   * @param {string} expression - Dice expression
+   * Delegates to DiceRoller for consistent rolling and history tracking.
+   * @param {string|number} expression - Dice expression or raw number
    * @returns {number} Roll result
    */
   parseDiceExpression(expression) {
     if (typeof expression === 'number') return expression;
-    const match = expression.match(/(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/);
-    if (!match) return 0;
-    const count = parseInt(match[1]);
-    const sides = parseInt(match[2]);
-    const mod = match[4] ? (match[3] === '+' ? 1 : -1) * parseInt(match[4]) : 0;
-    let total = mod;
-    for (let i = 0; i < count; i++) {
-      total += Math.floor(Math.random() * sides) + 1;
+    try {
+      const result = this.diceRoller.roll(String(expression));
+      return result.total;
+    } catch {
+      return 0;
     }
-    return total;
   }
 
   /**

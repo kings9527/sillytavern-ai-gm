@@ -9,6 +9,7 @@
  */
 
 import { NPCDecisionEngineContract } from '../contracts/index.js';
+import { PromptBuilder } from '../utils/prompt-builder.js';
 
 /**
  * NPC attitude state machine
@@ -128,7 +129,7 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
    * @param {LLMClient} llmClient - Optional LLM client for AI-enhanced decisions
    * @returns {Promise<NPCDecision>}
    */
-  async decide(situation, llmClient = null) {
+  async decide(situation, llmClient = null, chatHistory = '') {
     // 0. Death check — immediate
     if (!this.npcState.is_alive || this.npcState.current_hp <= 0) {
       return {
@@ -140,7 +141,7 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
       };
     }
 
-    const context = this._buildContext(situation);
+    const context = this._buildContext(situation, chatHistory);
 
     // 1. High-confidence rule-based decisions (confidence >= 0.85)
     const ruleDecision = this._ruleBasedDecision(context);
@@ -172,10 +173,10 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
   }
 
   /**
-   * Build rich context from situation + campaign state
+   * Build rich context from situation + campaign state + optional chat history
    * @private
    */
-  _buildContext(situation) {
+  _buildContext(situation, chatHistory = '') {
     const player = this.campaign.player || {};
     const scene = this.campaign.module?.scenes?.[this.campaign.current_scene] || {};
     const isCombat = this.campaign.combat_state?.active === true;
@@ -199,6 +200,7 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
         scene_enemies: scene.combat?.enemies || [],
       },
       available_actions: this._getAvailableActions(),
+      chat_history: chatHistory,
     };
   }
 
@@ -543,44 +545,101 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
   }
 
   /**
-   * LLM-enhanced decision for complex situations
+   * LLM-enhanced decision for complex situations — uses PromptBuilder for rich context
    * @private
    */
   async _llmEnhancedDecision(context, llmClient) {
-    const { npc, template, situation, campaign_state } = context;
-    const systemPrompt = `You are an RPG NPC decision engine. Given a character and situation, decide the NPC's action.
-Respond with a JSON object containing: action (string), confidence (0.0-1.0), reasoning (string), mood (string), target_id (string or null).
-Available actions: ${this._getAvailableActions().join(', ')}.
-The NPC is ${template.name || 'Unknown'}, role: ${template.role || 'neutral'}, attitude: ${npc.attitude}.`;
+    const { npc, template, situation, campaign_state, chat_history } = context;
 
-    const prompt = `Situation: ${JSON.stringify(situation)}
-NPC State: HP ${npc.current_hp}/${template.hp || 10}, SAN ${npc.current_san}/${template.sanity || 50}, trust ${npc.trust}, fear ${npc.fear}, suspicion ${npc.suspicion}
-Campaign: ${campaign_state.current_scene}, combat: ${campaign_state.is_combat}, player turn: ${campaign_state.is_player_turn}
-Player: ${campaign_state.player_name}, HP ratio: ${campaign_state.player_hp_ratio.toFixed(2)}, SAN ratio: ${campaign_state.player_san_ratio.toFixed(2)}`;
+    // Build rich prompt via PromptBuilder and incorporate GM context
+    const promptBuilder = new PromptBuilder(this.campaign);
+    const gmPrompt = promptBuilder.buildGMContextPrompt();
+
+    const systemPrompt = `${gmPrompt?.content || ''}
+
+You are also the tactical decision engine for NPC: ${template.name || 'an NPC'}.
+
+NPC Profile:
+- Name: ${template.name || 'Unknown'}
+- Role: ${template.role || 'neutral'}
+- Personality: ${template.personality || '未设定'}
+- Description: ${template.description || '未设定'}
+- Attitude: ${npc.attitude}
+- Trust: ${npc.trust}/100, Fear: ${npc.fear}/100, Suspicion: ${npc.suspicion}/100
+
+Scene: ${campaign_state.current_scene}
+Player: ${campaign_state.player_name} (HP ${Math.round(campaign_state.player_hp_ratio * 100)}%, SAN ${Math.round(campaign_state.player_san_ratio * 100)}%)
+Combat: ${campaign_state.is_combat ? 'YES' : 'NO'}${campaign_state.is_combat ? `, Player Turn: ${campaign_state.is_player_turn ? 'YES' : 'NO'}` : ''}
+
+${template.secrets?.length ? `Secrets: ${template.secrets.map(s => s.keyword).join(', ')}` : ''}
+${npc.secrets_revealed.length ? `Already revealed: ${npc.secrets_revealed.join(', ')}` : ''}
+${npc.known_topics.length ? `Known topics: ${npc.known_topics.join(', ')}` : ''}
+
+Available actions: ${this._getAvailableActions().join(', ')}.
+
+You must respond with a single JSON object containing exactly these fields:
+- action: one of the available actions
+- confidence: number 0.0-1.0
+- reasoning: brief explanation in Chinese
+- mood: emotion descriptor (e.g., calm, angry, scared, friendly, hostile)
+- target_id: "player" or null
+- dialogue_topic: optional topic hint if action is "talk"
+
+Rules:
+1. Stay in character based on personality and attitude.
+2. Only choose actions the NPC is capable of.
+3. If HP is critical (< 25%), strongly consider fleeing (unless Boss/zealot).
+4. If trust is high (> 60), favor talk/help over hostility.
+5. If fear is high (> 70), favor fleeing or pleading.
+6. In combat, enemies attack or use special abilities; allies help.
+7. NEVER output markdown, only raw JSON.`;
+
+    const userPrompt = `Situation: ${situation.type}
+${situation.player_input ? `Player input: "${situation.player_input}"` : ''}
+NPC current state: HP ${npc.current_hp}/${template.hp || template.stats?.HP || 10}, SAN ${npc.current_san}, attitude ${npc.attitude}, trust ${npc.trust}, fear ${npc.fear}, suspicion ${npc.suspicion}
+Turn count: ${npc.turns_in_scene}
+${chat_history ? `\nRecent conversation:\n${chat_history}` : ''}
+
+What do you do?`;
 
     try {
-      const result = await llmClient.chatJSON(
+      const response = await llmClient.chat(
         [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
+          { role: 'user', content: userPrompt },
         ],
-        { temperature: 0.3, maxTokens: 256 },
+        { temperature: 0.6, maxTokens: 256 },
       );
 
-      if (result.error) {
-        throw new Error(result.error);
+      let parsed = null;
+      try {
+        const raw = response.content.trim();
+        const jsonMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
+        parsed = JSON.parse(jsonText);
+      } catch (parseError) {
+        console.warn(`[NPCDecisionEngine] LLM decision returned non-JSON for ${this.npcId}:`, parseError.message);
+        return null;
       }
 
+      if (!parsed || !parsed.action) {
+        return null;
+      }
+
+      const confidence = parseFloat(parsed.confidence) || 0.5;
+
       return {
-        action: result.action || 'talk',
-        confidence: Math.max(0.5, Math.min(1.0, parseFloat(result.confidence) || 0.6)),
-        reasoning: result.reasoning || 'LLM decision',
-        mood: result.mood || 'neutral',
-        target_id: result.target_id || 'player',
+        action: parsed.action,
+        confidence: Math.max(0, Math.min(1, confidence)),
+        reasoning: parsed.reasoning || 'LLM reasoning',
+        mood: parsed.mood || 'neutral',
+        target_id: parsed.target_id || 'player',
+        dialogue_topic: parsed.dialogue_topic || null,
+        llm_enhanced: true,
       };
     } catch (error) {
-      console.warn('[NPCDecisionEngine] LLM decision failed:', error.message);
-      return this._defaultFallback(context);
+      console.warn(`[NPCDecisionEngine] LLM enhanced decision failed for ${this.npcId}:`, error.message);
+      return null;
     }
   }
 
