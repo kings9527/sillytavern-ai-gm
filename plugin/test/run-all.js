@@ -18,6 +18,11 @@ const tests = [
   'campaign-storage.test.js',
   'npc-decision-advanced.test.js',
   'extension-lifecycle.test.js',
+  'state-machine-intent.test.js',
+  'st-chat-bridge.test.js',
+  'dev-mode.test.js',
+  'llm-client-extended.test.js',
+  'state-machine.test.js',
 ];
 
 let totalPass = 0;
