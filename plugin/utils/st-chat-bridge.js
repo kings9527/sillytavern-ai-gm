@@ -7,28 +7,54 @@
  * 3. 将游戏结果（场景描述、骰子结果、NPC 对话）通过 toast / DOM 注入 ST 界面
  * 4. 支持 `/gm` 命令前缀和自动解析两种模式
  *
+ * 架构：
+ * - 纯逻辑（消息缓存、关键词匹配、上下文格式化）→ utils/st-bridge-core.js
+ * - DOM/ST 依赖（document、window.toastr）→ 本文件，封装为可注入的接口
+ *
  * 限制：
  * - 不直接修改 ST 聊天记录（避免破坏角色扮演流），仅通过面板和 toast 显示
  * - 依赖 ST DOM 结构获取消息内容（fallback 到 eventSource 参数）
  */
+
+import {
+  shouldProcessAsGameAction,
+  stripGmPrefix,
+  createMessageCache,
+  formatContext,
+  makeActionKey,
+  createPendingSet,
+  parseActionInput,
+} from './st-bridge-core.js';
 
 export class STChatBridge {
   /**
    * @param {Object} gameController — window.AiGmGameController 实例
    * @param {Object} options
    * @param {number} options.maxContextMessages — 保留的最近消息数（默认 20）
-   * @param {boolean} options.autoParse — 是否自动解析所有用户输入（默认 false）
+   * @param {boolean} options.autoParse — 是否自动解析所有用户输入（默认 true）
    * @param {boolean} options.injectToChat — 是否将游戏结果插入 ST 聊天（默认 false，仅 toast）
+   * @param {Object} [options.deps] — 可注入的依赖（用于测试）
+   * @param {Function} [options.deps.getMessageText] — 替代 _getMessageText 的实现
+   * @param {Function} [options.deps.notify] — 替代 _notify 的实现
+   * @param {Function} [options.deps.createElement] — 替代 document.createElement 的实现
+   * @param {Function} [options.deps.escapeHtml] — 替代 _escapeHtml 的实现
    */
   constructor(gameController, options = {}) {
     this.gameController = gameController;
     this.maxContextMessages = options.maxContextMessages || 20;
     this.autoParse = options.autoParse !== false; // 默认启用，因为这是 AI-GM 核心卖点
     this.injectToChat = options.injectToChat || false;
-    this.messageCache = [];
     this.isEnabled = false;
-    this.pendingActions = new Set(); // 防止重复提交
+
+    // 纯逻辑部分委托给 core
+    this._cache = createMessageCache(this.maxContextMessages);
+    this._pending = createPendingSet(500);
+
+    // 可注入依赖（测试时传入 mock）
+    this._deps = options.deps || {};
   }
+
+  /* ---------- 生命周期 ---------- */
 
   start() {
     this.isEnabled = true;
@@ -37,8 +63,8 @@ export class STChatBridge {
 
   stop() {
     this.isEnabled = false;
-    this.messageCache = [];
-    this.pendingActions.clear();
+    this._cache.clear();
+    this._pending.clear();
   }
 
   /* ---------- 消息监听 ---------- */
@@ -54,13 +80,13 @@ export class STChatBridge {
     const text = this._getMessageText(messageId) || fallbackText;
     if (!text) return;
 
-    this._cacheMessage({ role: 'user', text, id: messageId, timestamp: Date.now() });
+    this._cache.push({ role: 'user', text, id: messageId, timestamp: Date.now() });
 
     // 判断是否应作为游戏动作处理
-    if (!this._shouldProcessAsGameAction(text)) return;
+    if (!shouldProcessAsGameAction(text, this.autoParse)) return;
 
-    const actionInput = text.replace(/^\/gm\s*/, '').trim();
-    this._sendAction({ type: 'player_input', input: actionInput, raw: text });
+    const action = parseActionInput(text, 'chat');
+    this._sendAction(action);
   }
 
   /**
@@ -74,24 +100,24 @@ export class STChatBridge {
     const text = this._getMessageText(messageId) || fallbackText;
     if (!text) return;
 
-    this._cacheMessage({ role: 'character', text, id: messageId, timestamp: Date.now() });
+    this._cache.push({ role: 'character', text, id: messageId, timestamp: Date.now() });
   }
 
   /**
    * 当聊天切换时（CHAT_CHANGED），清空缓存
    */
   onChatChanged() {
-    this.messageCache = [];
-    this.pendingActions.clear();
+    this._cache.clear();
+    this._pending.clear();
     console.log('[STChatBridge] 聊天切换 — 缓存已清空');
   }
 
   /* ---------- 动作发送 ---------- */
 
   async _sendAction(action) {
-    const actionKey = `${action.type}_${action.input}_${Date.now()}`;
-    if (this.pendingActions.has(actionKey)) return;
-    this.pendingActions.add(actionKey);
+    const key = makeActionKey(action);
+    if (this._pending.has(key)) return;
+    this._pending.add(key);
 
     try {
       // 将最近聊天记录作为上下文附加到动作中，供 NPC 决策使用
@@ -104,19 +130,10 @@ export class STChatBridge {
     } catch (err) {
       console.error('[STChatBridge] 发送动作失败:', err.message);
       this._notify('❌ 动作处理失败: ' + err.message, 'error');
-    } finally {
-      setTimeout(() => this.pendingActions.delete(actionKey), 500);
     }
   }
 
-  /* ---------- 消息缓存与上下文 ---------- */
-
-  _cacheMessage(msg) {
-    this.messageCache.push(msg);
-    if (this.messageCache.length > this.maxContextMessages) {
-      this.messageCache.shift();
-    }
-  }
+  /* ---------- 消息缓存与上下文（委托给 core） ---------- */
 
   /**
    * 获取最近 N 条消息拼接的上下文文本（供 LLM 增强使用）
@@ -124,70 +141,20 @@ export class STChatBridge {
    * @returns {string}
    */
   getRecentContext(limit = 10) {
-    return this.messageCache
-      .slice(-limit)
-      .map(m => {
-        const prefix = m.role === 'user' ? '玩家' : 'AI';
-        return `${prefix}: ${m.text}`;
-      })
-      .join('\n');
+    return formatContext(this._cache.getAll(), limit);
   }
 
-  /* ---------- 动作过滤 ---------- */
-
-  /**
-   * 判断用户输入是否应作为游戏动作处理
-   * 策略：
-   * 1. 如果输入以 `/gm` 开头，总是处理（并去掉前缀）
-   * 2. 如果启用了 autoParse，检查是否包含游戏动作关键词
-   * 3. 如果未启用 autoParse，只处理 `/gm` 前缀
-   */
-  _shouldProcessAsGameAction(input) {
-    if (!input || typeof input !== 'string') return false;
-    const trimmed = input.trim();
-
-    // 命令前缀模式
-    if (trimmed.startsWith('/gm')) return true;
-
-    // 自动解析模式：关键词匹配
-    if (this.autoParse) {
-      const keywords = [
-        // 中文
-        '去', '走', '前往', '进入', '到', '离开', '返回',
-        '检查', '查看', '调查', '侦查', '搜索', '观察', '环顾',
-        '攻击', '打', '杀', '战斗', '射击', '开枪', '格斗',
-        '说', '问', '告诉', '对话', '交谈', '打听',
-        '使用', '用', '消耗', '装备', '打开', '关闭', '拿起', '拿', '取', '拾取', '放下', '给',
-        '检定', '骰', '投', 'roll', '鉴定',
-        '逃跑', '撤退', '撤离', '跑',
-        '休息', '治疗', '恢复', '包扎', '睡觉',
-        '读', '阅读', '翻阅', '研究', '翻译', '解读',
-        '跟随', '跟踪', '尾随', '监视',
-        '躲藏', '藏起来', '藏起来', '潜行', '偷偷',
-        '聆听', '听', '偷听',
-        '施法', '施展', '念咒', '召唤', '仪式',
-        // 英文
-        'go', 'move', 'walk', 'enter', 'leave', 'exit', 'head', 'proceed',
-        'check', 'examine', 'inspect', 'look', 'search', 'investigate', 'observe', 'scout',
-        'attack', 'fight', 'hit', 'strike', 'shoot', 'stab', 'kill', 'combat',
-        'talk', 'speak', 'ask', 'tell', 'say', 'chat', 'conversation', 'dialogue',
-        'use', 'equip', 'consume', 'activate', 'open', 'close', 'pick', 'take', 'grab', 'give', 'drop',
-        'roll', 'dice', 'check', 'test', 'skill',
-        'flee', 'run', 'escape', 'retreat', 'withdraw',
-        'rest', 'sleep', 'heal', 'recover', 'treat',
-        'read', 'study', 'research', 'translate', 'decipher',
-        'follow', 'tail', 'shadow', 'track', 'pursue',
-        'hide', 'sneak', 'stealth', 'conceal',
-        'listen', 'eavesdrop', 'overhear',
-        'cast', 'spell', 'invoke', 'summon', 'ritual', 'magic',
-      ];
-      return keywords.some(kw => trimmed.toLowerCase().includes(kw.toLowerCase()));
-    }
-
-    return false;
+  /** @returns {Array} 内部调试用 */
+  get messageCache() {
+    return this._cache.getAll();
   }
 
-  /* ---------- ST 消息读取 ---------- */
+  /** @returns {number} */
+  get pendingCount() {
+    return this._pending.size;
+  }
+
+  /* ---------- ST 消息读取（可注入） ---------- */
 
   /**
    * 从 ST DOM 中读取指定消息的内容
@@ -197,6 +164,11 @@ export class STChatBridge {
    * @private
    */
   _getMessageText(messageId) {
+    // 测试注入
+    if (this._deps.getMessageText) {
+      return this._deps.getMessageText(messageId);
+    }
+
     if (typeof document === 'undefined') return null;
 
     // 尝试通过 mesid 属性查找
@@ -215,7 +187,7 @@ export class STChatBridge {
     return el.textContent || el.innerText || '';
   }
 
-  /* ---------- 通知 / 注入 ---------- */
+  /* ---------- 通知 / 注入（可注入） ---------- */
 
   /**
    * 显示一条通知（使用 ST 的 toastr 或自定义 toast）
@@ -224,6 +196,10 @@ export class STChatBridge {
    * @param {number} [duration=4000]
    */
   _notify(text, level = 'info', duration = 4000) {
+    if (this._deps.notify) {
+      return this._deps.notify(text, level, duration);
+    }
+
     if (typeof window === 'undefined') return;
 
     // 优先使用 ST 内置的 toastr
@@ -279,6 +255,9 @@ export class STChatBridge {
   }
 
   _escapeHtml(text) {
+    if (this._deps.escapeHtml) return this._deps.escapeHtml(text);
+    if (typeof document === 'undefined') return text;
+
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;

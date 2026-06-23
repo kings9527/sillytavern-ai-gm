@@ -298,6 +298,121 @@ async function runTests() {
     assertEqual(result.target, '深潜者', 'should fallback to raw text when no entity map');
   }
 
+  // ====== Boundary: Special Characters ======
+  console.log('Test: Special characters input');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    const cases = [
+      { input: '', expectType: 'unknown', expectConfidence: 0 },
+      { input: '   ', expectType: 'unknown', expectConfidence: 0 },
+      { input: '😀', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '👹👾🎲', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '<script>alert(1)</script>', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: ';;::;;', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '!@#$%^&*()', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '\x00\x01\x02', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '\u0000\u0001\u0002', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '\\n\\t\\r', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '　', expectType: 'unknown', expectConfidence: 0 }, // Full-width space → trim → empty
+      { input: '•†∞§¶', expectType: 'unknown', expectConfidence: 0.3 },
+      { input: '「」【】《》', expectType: 'unknown', expectConfidence: 0.3 },
+    ];
+    for (const c of cases) {
+      const result = await parser.parse(c.input, testContext);
+      assertEqual(result.type, c.expectType, `parse(${JSON.stringify(c.input)}).type`);
+      assertEqual(result.confidence, c.expectConfidence, `parse(${JSON.stringify(c.input)}).confidence should be ${c.expectConfidence}`);
+    }
+  }
+
+  // ====== Boundary: Nonsense / Random Input ======
+  console.log('Test: Nonsense and random input');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    const cases = [
+      { input: 'asdfghjkl', expectType: 'unknown' },
+      { input: 'qwertyuiop', expectType: 'unknown' },
+      { input: '1234567890', expectType: 'unknown' },
+      { input: '3.1415926', expectType: 'unknown' },
+      { input: '!!!???!!!', expectType: 'unknown' },
+      { input: '.........', expectType: 'unknown' },
+      { input: '哈囉哩嘻呼', expectType: 'unknown' }, // Random Chinese chars
+      { input: '블라블라블라', expectType: 'unknown' }, // Korean nonsense
+      { input: 'lorem ipsum dolor sit amet', expectType: 'unknown' },
+      { input: 'foo bar baz qux', expectType: 'unknown' },
+    ];
+    for (const c of cases) {
+      const result = await parser.parse(c.input, testContext);
+      assertEqual(result.type, c.expectType, `parse("${c.input}").type`);
+      assertTrue(result.confidence <= 0.3, `parse("${c.input}").confidence should be low (got ${result.confidence})`);
+    }
+  }
+
+  // ====== Boundary: Oversized Input ======
+  console.log('Test: Oversized input');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    // Long input that still contains a valid pattern at the start
+    const longInput = '去楼梯' + '啊'.repeat(10000);
+    const result = await parser.parse(longInput, testContext);
+    assertEqual(result.type, 'move', 'very long move input should still match pattern');
+    // Target extraction may fail on oversized text; assert it's a string
+    assertTrue(typeof result.target === 'string', 'should have a string target');
+
+    const hugeInput = 'a'.repeat(50000);
+    const result2 = await parser.parse(hugeInput, testContext);
+    assertEqual(result2.type, 'unknown', 'huge random input should be unknown');
+  }
+
+  // ====== Boundary: Mixed Chinese-English with Special Chars ======
+  console.log('Test: Mixed CJK-Latin with special chars');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    // "attack" mixed with special chars — punctuation in target name won't be cleaned,
+    // so entity lookup fails and falls back to raw text
+    const r1 = await parser.parse('攻击！！深潜者？？', testContext);
+    assertEqual(r1.type, 'attack', 'attack with punctuation should match');
+    assertTrue(typeof r1.target === 'string' && r1.target.includes('深潜者'), 'should include target in raw fallback');
+
+    // Move with full-width chars
+    const r2 = await parser.parse('去「楼梯」', testContext);
+    assertEqual(r2.type, 'move', 'move with brackets should match');
+
+    // Talk with quotes
+    const r3 = await parser.parse('"你好"——对老图书管理员说', testContext);
+    assertEqual(r3.type, 'talk', 'talk with dashes should match');
+  }
+
+  // ====== Boundary: Unicode Normalization Edge Cases ======
+  console.log('Test: Unicode normalization edge cases');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    // NFD vs NFC forms of same character
+    const nfd = '去楼梯'.normalize('NFD');
+    const r1 = await parser.parse(nfd, testContext);
+    assertEqual(r1.type, 'move', 'NFD normalized input should match');
+
+    const nfc = '去楼梯'.normalize('NFC');
+    const r2 = await parser.parse(nfc, testContext);
+    assertEqual(r2.type, 'move', 'NFC normalized input should match');
+  }
+
+  // ====== Boundary: Input that looks like code / injection ======
+  console.log('Test: Code-like input');
+  {
+    const parser = new IntentParser({ useLLM: false });
+    const cases = [
+      { input: 'console.log("hack")', expectType: 'unknown' },
+      { input: 'SELECT * FROM users', expectType: 'unknown' },
+      { input: 'rm -rf /', expectType: 'unknown' },
+      { input: 'javascript:void(0)', expectType: 'unknown' },
+      { input: '{"intent":"attack"}', expectType: 'unknown' },
+    ];
+    for (const c of cases) {
+      const result = await parser.parse(c.input, testContext);
+      assertEqual(result.type, c.expectType, `parse("${c.input}").type`);
+    }
+  }
+
   // ====== Summary ======
   console.log('\n=== Results ===');
   console.log(`Passed: ${passCount}`);

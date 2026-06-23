@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node test/index.js && node test/extension-mount.js && node test/ui-integration.js && node test/campaign-storage.test.js && node test/npc-decision-advanced.test.js && node test/extension-lifecycle.test.js",
+    "test": "node test/index.js && node test/extension-mount.js && node test/ui-integration.js && node test/campaign-storage.test.js && node test/npc-decision-advanced.test.js && node test/extension-lifecycle.test.js && node test/st-chat-bridge.test.js",
     "test:engine": "node test/index.js",
     "test:extension": "node test/extension-mount.js && node test/extension-lifecycle.test.js",
     "test:ui": "node test/ui-integration.js",

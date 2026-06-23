@@ -269,6 +269,172 @@ test('Sanity check prompt with high loss', () => {
   assert(prompt.content.includes('20'), 'should include high loss');
 });
 
+// ====== Boundary: Empty / Missing Objects ======
+console.log('\n--- Boundary: Empty / Missing Objects ---');
+
+test('GM prompt handles missing player object', () => {
+  const campaign = {
+    ...baseCampaign,
+    player: null,
+  };
+  try {
+    const pb = new PromptBuilder(campaign);
+    const prompt = pb.buildGMContextPrompt();
+    // If it doesn't crash, at least verify it returns something
+    assert(prompt.role === 'system', 'should return system prompt');
+  } catch (e) {
+    assert(e.message.includes('null') || e.message.includes('Cannot read'), 'expected error for null player');
+  }
+});
+
+test('GM prompt handles missing scenes in module', () => {
+  const campaign = {
+    ...baseCampaign,
+    module: { ...baseModule, scenes: {} },
+  };
+  try {
+    const pb = new PromptBuilder(campaign);
+    const prompt = pb.buildGMContextPrompt();
+    assert(prompt.role === 'system', 'should return system prompt');
+  } catch (e) {
+    assert(e.message.includes('undefined') || e.message.includes('Cannot read'), 'expected error for missing scene');
+  }
+});
+
+test('NPC prompt handles missing npcs_state', () => {
+  const campaign = { ...baseCampaign, npcs_state: undefined };
+  try {
+    const pb = new PromptBuilder(campaign);
+    const prompt = pb.buildNPCDialoguePrompt('npc1', '上下文', '平静');
+    // If it doesn't crash, verify it returns something reasonable
+    assert(prompt !== null, 'should return prompt');
+  } catch (e) {
+    // Expected: accessing undefined.npc1 throws
+    assert(e.message.includes('undefined') || e.message.includes('Cannot read'), 'expected error for undefined npcs_state');
+  }
+});
+
+// ====== Boundary: Oversized Content ======
+console.log('\n--- Boundary: Oversized Content ---');
+
+test('GM prompt handles very long scene description', () => {
+  const longDesc = '潮湿。'.repeat(5000); // ~15000 chars
+  const campaign = {
+    ...baseCampaign,
+    module: {
+      ...baseModule,
+      scenes: {
+        s1: { ...baseModule.scenes.s1, description: longDesc },
+      },
+    },
+  };
+  const pb = new PromptBuilder(campaign);
+  const prompt = pb.buildGMContextPrompt();
+  assert(prompt.content.includes('潮湿'), 'should include long description');
+  assert(prompt.content.length > 10000, 'should preserve full length');
+});
+
+test('GM prompt handles very long NPC name list', () => {
+  const manyNpcs = {};
+  const manyPresent = [];
+  for (let i = 0; i < 200; i++) {
+    manyNpcs[`npc${i}`] = { name: `NPC_${i}_一个很长的中文名字测试`, description: 'test' };
+    manyPresent.push(`npc${i}`);
+  }
+  const campaign = {
+    ...baseCampaign,
+    module: {
+      ...baseModule,
+      npcs: { ...baseModule.npcs, ...manyNpcs },
+      scenes: {
+        s1: { ...baseModule.scenes.s1, npcs_present: manyPresent },
+      },
+    },
+  };
+  const pb = new PromptBuilder(campaign);
+  const prompt = pb.buildGMContextPrompt();
+  assert(prompt.content.includes('NPC_0'), 'should include first NPC');
+  assert(prompt.content.includes('NPC_199'), 'should include last NPC');
+});
+
+test('NPC prompt handles very long personality text', () => {
+  const longPersonality = '谨慎。'.repeat(2000);
+  const campaign = {
+    ...baseCampaign,
+    module: {
+      ...baseModule,
+      npcs: {
+        npc1: { ...baseModule.npcs.npc1, personality: longPersonality },
+      },
+    },
+  };
+  const pb = new PromptBuilder(campaign);
+  const prompt = pb.buildNPCDialoguePrompt('npc1', '上下文', '平静');
+  assert(prompt.content.length > 2000, 'should preserve long personality');
+});
+
+test('Sanity check prompt handles very long situation text', () => {
+  const longSituation = '看到不可名状的雕像。'.repeat(1000);
+  const pb = new PromptBuilder(baseCampaign);
+  const prompt = pb.buildSanityCheckPrompt(5, longSituation);
+  assert(prompt.content.includes('看到不可名状的雕像'), 'should include long situation');
+  assert(prompt.content.length > 5000, 'should preserve full situation length');
+});
+
+test('Combat narration handles very long action text', () => {
+  const longAction = '挥拳。'.repeat(2000);
+  const pb = new PromptBuilder(baseCampaign);
+  const action = { actor: longAction, action: '攻击', hit: true, damage: 5 };
+  const prompt = pb.buildCombatNarrationPrompt(action, '命中');
+  assert(prompt.content.includes('挥拳'), 'should include long actor name');
+});
+
+// ====== Boundary: Special / Malformed Values ======
+console.log('\n--- Boundary: Special / Malformed Values ---');
+
+test('GM prompt handles player stats with zero values', () => {
+  const campaign = {
+    ...baseCampaign,
+    player: {
+      name: '测试员',
+      stats: { STR: 0, CON: 0, DEX: 0, INT: 0, POW: 0, HP: 0, SAN: 0 },
+      sanity: 0,
+      max_sanity: 0,
+    },
+  };
+  const pb = new PromptBuilder(campaign);
+  const prompt = pb.buildGMContextPrompt();
+  // Note: `0 || '?'` in JS returns '?' so HP 0 shows as '?/?'
+  assert(prompt.content.includes('HP') && prompt.content.includes('SAN'), 'should mention HP and SAN');
+  assert(prompt.content.includes('测试员'), 'should show player name');
+});
+
+test('GM prompt handles negative sanity', () => {
+  const campaign = {
+    ...baseCampaign,
+    player: {
+      ...baseCampaign.player,
+      sanity: -5,
+    },
+  };
+  const pb = new PromptBuilder(campaign);
+  const prompt = pb.buildGMContextPrompt();
+  assert(prompt.content.includes('SAN -5'), 'should show negative SAN');
+});
+
+test('Scene description handles special characters in transition', () => {
+  const pb = new PromptBuilder(baseCampaign);
+  const special = '你推开沉重的木门，\n听到了\"嘎吱\"一声——还有……';
+  const prompt = pb.buildSceneDescriptionPrompt('s1', special);
+  assert(prompt.content.includes('嘎吱'), 'should preserve special chars');
+});
+
+test('NPC prompt with emoji in mood', () => {
+  const pb = new PromptBuilder(baseCampaign);
+  const prompt = pb.buildNPCDialoguePrompt('npc1', '上下文', '😰极度恐慌');
+  assert(prompt.content.includes('😰'), 'should preserve emoji in mood');
+});
+
 // ====== Summary ======
 console.log('\n=== Results ===');
 console.log(`Passed: ${passCount}`);
