@@ -500,7 +500,10 @@ Defeated allies: ${combatState.defeated.length > 0 ? combatState.defeated.join('
         const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
         parsed = JSON.parse(jsonText);
       } catch (parseError) {
-        console.warn('[CombatTracker] LLM enemy decision returned non-JSON, using heuristics:', parseError.message);
+        console.warn(
+          '[CombatTracker] LLM enemy decision returned non-JSON, using heuristics:',
+          parseError.message,
+        );
         return null;
       }
 

@@ -8,14 +8,26 @@ const CSS_NS = 'ai-gm-npc';
 
 /** 态度表情映射 */
 const ATTITUDE_ICON = {
-  friendly: '😊', neutral: '😐', hostile: '👿', fearful: '😰', mysterious: '🎭',
-  dead: '💀', insane: '🌀', unknown: '❓',
+  friendly: '😊',
+  neutral: '😐',
+  hostile: '👿',
+  fearful: '😰',
+  mysterious: '🎭',
+  dead: '💀',
+  insane: '🌀',
+  unknown: '❓',
 };
 
 /** 态度颜色映射 */
 const ATTITUDE_COLOR = {
-  friendly: '#6a6', neutral: '#aa6', hostile: '#a66', fearful: '#a6a',
-  mysterious: '#66a', dead: '#666', insane: '#86a', unknown: '#888',
+  friendly: '#6a6',
+  neutral: '#aa6',
+  hostile: '#a66',
+  fearful: '#a6a',
+  mysterious: '#66a',
+  dead: '#666',
+  insane: '#86a',
+  unknown: '#888',
 };
 
 /** 初始化 NPC 卡片容器 */
@@ -50,7 +62,7 @@ function renderNpcs(npcs) {
   if (count) count.textContent = String(list.length);
 
   grid.innerHTML = list.length
-    ? list.map(npc => buildNpcCard(npc)).join('')
+    ? list.map((npc) => buildNpcCard(npc)).join('')
     : `<div class="${CSS_NS}-empty">此处无人生还...</div>`;
 
   // 绑定交互事件
@@ -68,11 +80,17 @@ function buildNpcCard(npc) {
   const maxHp = npc.maxHp ?? '?';
   const san = npc.currentSan ?? npc.san ?? '?';
   const maxSan = npc.maxSan ?? '?';
-  const hpPct = (maxHp && maxHp !== '?') ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
-  const sanPct = (maxSan && maxSan !== '?') ? Math.max(0, Math.min(100, (san / maxSan) * 100)) : 0;
-  const effects = (npc.statusEffects || []).map(e => `<span class="${CSS_NS}-effect">${escapeHtml(e)}</span>`).join('');
-  const location = npc.location ? `<span class="${CSS_NS}-loc">📍 ${escapeHtml(npc.location)}</span>` : '';
-  const memory = npc.memorySummary ? `<div class="${CSS_NS}-memory">${escapeHtml(npc.memorySummary)}</div>` : '';
+  const hpPct = maxHp && maxHp !== '?' ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
+  const sanPct = maxSan && maxSan !== '?' ? Math.max(0, Math.min(100, (san / maxSan) * 100)) : 0;
+  const effects = (npc.statusEffects || [])
+    .map((e) => `<span class="${CSS_NS}-effect">${escapeHtml(e)}</span>`)
+    .join('');
+  const location = npc.location
+    ? `<span class="${CSS_NS}-loc">📍 ${escapeHtml(npc.location)}</span>`
+    : '';
+  const memory = npc.memorySummary
+    ? `<div class="${CSS_NS}-memory">${escapeHtml(npc.memorySummary)}</div>`
+    : '';
   const avatar = npc.avatar
     ? `<img class="${CSS_NS}-avatar" src="${escapeHtml(npc.avatar)}" alt="${name}">`
     : `<div class="${CSS_NS}-avatar-placeholder" style="background:${color}20;color:${color}">${name[0]}</div>`;
@@ -119,26 +137,30 @@ function buildNpcCard(npc) {
 
 /** 绑定 NPC 卡片交互事件 */
 function bindNpcEvents(grid) {
-  grid.querySelectorAll(`.${CSS_NS}-card`).forEach(card => {
+  grid.querySelectorAll(`.${CSS_NS}-card`).forEach((card) => {
     card.addEventListener('click', (e) => {
       const id = card.dataset.npcId;
       if (!id) return;
       // 点击卡片展开/折叠详情
       card.classList.toggle('expanded');
-      document.dispatchEvent(new CustomEvent('ai-gm:npc-select', {
-        detail: { npcId: id, source: 'card' },
-      }));
+      document.dispatchEvent(
+        new CustomEvent('ai-gm:npc-select', {
+          detail: { npcId: id, source: 'card' },
+        }),
+      );
     });
   });
 
-  grid.querySelectorAll(`.${CSS_NS}-act-btn`).forEach(btn => {
+  grid.querySelectorAll(`.${CSS_NS}-act-btn`).forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
       const npcId = btn.dataset.npc;
-      document.dispatchEvent(new CustomEvent('ai-gm:npc-action', {
-        detail: { npcId, action, source: 'card' },
-      }));
+      document.dispatchEvent(
+        new CustomEvent('ai-gm:npc-action', {
+          detail: { npcId, action, source: 'card' },
+        }),
+      );
     });
   });
 }
@@ -181,7 +203,9 @@ function updateNpcState(npcId, updates) {
     const sub = card.querySelector(`.${CSS_NS}-sub`);
     if (sub) {
       const loc = sub.querySelector(`.${CSS_NS}-loc`);
-      const effects = updates.statusEffects.map(e => `<span class="${CSS_NS}-effect">${escapeHtml(e)}</span>`).join('');
+      const effects = updates.statusEffects
+        .map((e) => `<span class="${CSS_NS}-effect">${escapeHtml(e)}</span>`)
+        .join('');
       sub.innerHTML = (loc ? loc.outerHTML : '') + effects;
     }
   }
@@ -244,7 +268,10 @@ function injectNpcStyles(root) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 
 /* ---------- exports ---------- */

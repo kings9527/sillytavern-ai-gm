@@ -42,10 +42,7 @@ function testIndexImportsUImodules() {
   ];
 
   for (const mod of requiredModules) {
-    assert.ok(
-      indexSrc.includes(mod),
-      `index.js 必须导入 ${mod}`
-    );
+    assert.ok(indexSrc.includes(mod), `index.js 必须导入 ${mod}`);
   }
 
   console.log('✅ UI 模块导入检查通过');
@@ -56,8 +53,14 @@ function testIndexBindsSTEvents() {
 
   assert.ok(indexSrc.includes('eventSource.on'), 'index.js 必须使用 eventSource.on');
   assert.ok(indexSrc.includes('event_types.CHAT_CHANGED'), '必须绑定 CHAT_CHANGED');
-  assert.ok(indexSrc.includes('event_types.CHARACTER_MESSAGE_RENDERED'), '必须绑定 CHARACTER_MESSAGE_RENDERED');
-  assert.ok(indexSrc.includes('event_types.USER_MESSAGE_RENDERED'), '必须绑定 USER_MESSAGE_RENDERED');
+  assert.ok(
+    indexSrc.includes('event_types.CHARACTER_MESSAGE_RENDERED'),
+    '必须绑定 CHARACTER_MESSAGE_RENDERED',
+  );
+  assert.ok(
+    indexSrc.includes('event_types.USER_MESSAGE_RENDERED'),
+    '必须绑定 USER_MESSAGE_RENDERED',
+  );
 
   console.log('✅ ST 事件绑定检查通过');
 }

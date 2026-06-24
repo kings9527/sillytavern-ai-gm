@@ -71,8 +71,14 @@ function testBuildGameState() {
   assert(state.scene.id === 'scene1', 'scene.id must be scene1');
   assert(state.scene.atmosphere === 'mystery', 'scene.atmosphere must be mystery');
   assert(state.npcs.length === 1, `npcs must have 1 entry, got ${state.npcs.length}`);
-  assert(state.npcs[0].name === '老管理员', `npc[0].name must be '老管理员', got ${state.npcs[0].name}`);
-  assert(state.npcs[0].currentHp === 15, `npc[0].currentHp must be 15, got ${state.npcs[0].currentHp}`);
+  assert(
+    state.npcs[0].name === '老管理员',
+    `npc[0].name must be '老管理员', got ${state.npcs[0].name}`,
+  );
+  assert(
+    state.npcs[0].currentHp === 15,
+    `npc[0].currentHp must be 15, got ${state.npcs[0].currentHp}`,
+  );
   assert(state.exits.length === 1, `exits must have 1 entry, got ${state.exits.length}`);
   assert(state.exits[0].target === 'basement', 'exit target must be basement');
   assert(state.player.name === '调查员', `player.name must be '调查员', got ${state.player.name}`);
@@ -86,7 +92,10 @@ function testBuildGameStateDefaults() {
   const state = buildGameState({}, {});
   assert(state.title === '未知场景', `default title must be '未知场景', got ${state.title}`);
   assert(state.npcs.length === 0, 'npcs must be empty for empty module');
-  assert(state.player.name === '未知', `default player name must be '未知', got ${state.player.name}`);
+  assert(
+    state.player.name === '未知',
+    `default player name must be '未知', got ${state.player.name}`,
+  );
   console.log('✅ testBuildGameStateDefaults passed');
 }
 

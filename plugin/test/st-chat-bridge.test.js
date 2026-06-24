@@ -53,7 +53,8 @@ function assertEqual(actual, expected, message) {
 }
 
 function assertIncludes(haystack, needle, message) {
-  if (!haystack.includes(needle)) throw new Error(message || `Expected "${haystack}" to include "${needle}"`);
+  if (!haystack.includes(needle))
+    throw new Error(message || `Expected "${haystack}" to include "${needle}"`);
 }
 
 /* ---------- Mock Browser Globals ---------- */
@@ -87,10 +88,19 @@ function setupBrowserMocks() {
         children: [],
         _textContent: '',
         _innerHTML: '',
-        get textContent() { return this._textContent; },
-        set textContent(v) { this._textContent = v; this._innerHTML = v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
-        get innerHTML() { return this._innerHTML; },
-        set innerHTML(v) { this._innerHTML = v; },
+        get textContent() {
+          return this._textContent;
+        },
+        set textContent(v) {
+          this._textContent = v;
+          this._innerHTML = v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        },
+        get innerHTML() {
+          return this._innerHTML;
+        },
+        set innerHTML(v) {
+          this._innerHTML = v;
+        },
       };
       el.appendChild = (c) => el.children.push(c);
       return el;
@@ -264,7 +274,10 @@ test('parseActionInput: strips prefix', () => {
 
 test('GAME_KEYWORDS: non-empty and all strings', () => {
   assert(GAME_KEYWORDS.length > 0, 'has keywords');
-  assert(GAME_KEYWORDS.every(k => typeof k === 'string'), 'all strings');
+  assert(
+    GAME_KEYWORDS.every((k) => typeof k === 'string'),
+    'all strings',
+  );
 });
 
 /* ================================================================
@@ -288,7 +301,11 @@ test('Constructor with default options', () => {
 
 test('Constructor with custom options', () => {
   const gc = createMockGameController();
-  const bridge = new STChatBridge(gc, { maxContextMessages: 5, autoParse: false, injectToChat: true });
+  const bridge = new STChatBridge(gc, {
+    maxContextMessages: 5,
+    autoParse: false,
+    injectToChat: true,
+  });
   assertEqual(bridge.maxContextMessages, 5);
   assertEqual(bridge.autoParse, false);
   assertEqual(bridge.injectToChat, true);
@@ -498,7 +515,9 @@ test('Injectable notify', () => {
   let notified = false;
   const bridge = new STChatBridge(gc, {
     deps: {
-      notify: (text, level) => { notified = true; },
+      notify: (text, level) => {
+        notified = true;
+      },
     },
   });
   bridge._notify('test', 'info');
@@ -541,7 +560,7 @@ test('_getMessageText falls back to index', () => {
   setupBrowserMocks();
   const gc = createMockGameController();
   const bridge = new STChatBridge(gc);
-  const el = { querySelector: (sel) => sel === '.mes_text' ? { textContent: 'By index' } : null };
+  const el = { querySelector: (sel) => (sel === '.mes_text' ? { textContent: 'By index' } : null) };
   el.classList = ['mes'];
   mockElements.set('#chat .mes', [el]);
   assertEqual(bridge._getMessageText(0), 'By index');
@@ -558,7 +577,9 @@ test('_notify returns undefined without window', () => {
 test('_notify uses toastr when available', () => {
   setupBrowserMocks();
   let called = false;
-  mockToastr.info = (msg, title, opts) => { called = true; };
+  mockToastr.info = (msg, title, opts) => {
+    called = true;
+  };
   const gc = createMockGameController();
   const bridge = new STChatBridge(gc);
   bridge._notify('test message', 'info', 3000);
@@ -630,12 +651,16 @@ test('onUserMessage with null gameController does not crash', () => {
 
 testAsync('_sendAction catches error and notifies', async () => {
   const gc = {
-    handleAction: async () => { throw new Error('boom'); },
+    handleAction: async () => {
+      throw new Error('boom');
+    },
   };
   let notified = false;
   const bridge = new STChatBridge(gc, {
     deps: {
-      notify: (text, level) => { notified = true; },
+      notify: (text, level) => {
+        notified = true;
+      },
     },
   });
   bridge.start();

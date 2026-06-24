@@ -144,7 +144,11 @@ test('watchModule returns cleanup function in mock mode', () => {
   const cleanup = watchModule(TMP_WATCH_FILE, () => {});
   assert(typeof cleanup === 'function', 'Expected cleanup function');
   cleanup();
-  try { unlinkSync(TMP_WATCH_FILE); } catch { /* ignore */ }
+  try {
+    unlinkSync(TMP_WATCH_FILE);
+  } catch {
+    /* ignore */
+  }
   delete process.env.MOCK_MODE;
 });
 
@@ -156,7 +160,9 @@ test('devLog does nothing in production', () => {
   process.env.NODE_ENV = 'production';
   let called = false;
   const orig = console.log;
-  console.log = () => { called = true; };
+  console.log = () => {
+    called = true;
+  };
   devLog('test message');
   console.log = orig;
   assert(called === false, 'Expected no console output in production');

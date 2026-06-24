@@ -16,12 +16,12 @@ const MAX_LOG_ENTRIES = 50;
  * @param {HTMLElement} container - 挂载容器
  */
 function initPanel(container) {
-    container.innerHTML = '';
-    container.classList.add(CSS_NS);
+  container.innerHTML = '';
+  container.classList.add(CSS_NS);
 
-    const el = document.createElement('div');
-    el.className = `${CSS_NS}-wrapper`;
-    el.innerHTML = `
+  const el = document.createElement('div');
+  el.className = `${CSS_NS}-wrapper`;
+  el.innerHTML = `
         <div class="${CSS_NS}-header">
             <h2 class="${CSS_NS}-title" id="agm-title">场景标题</h2>
             <span class="${CSS_NS}-status" id="agm-status">⚪ 等待连接</span>
@@ -57,9 +57,9 @@ function initPanel(container) {
             </div>
         </div>
     `;
-    container.appendChild(el);
-    injectStyles(container);
-    bindToggleEvents(el);
+  container.appendChild(el);
+  injectStyles(container);
+  bindToggleEvents(el);
 }
 
 /**
@@ -68,13 +68,13 @@ function initPanel(container) {
  *   { title, description, npcs: [], exits: [], player: {}, log: [], scene: {} }
  */
 function updatePanel(state) {
-    if (!state) return;
-    setText('agm-title', state.title || '未知场景');
-    setText('agm-desc', state.description || '');
-    renderNpcList(state.npcs || []);
-    renderExits(state.exits || []);
-    renderPlayerStats(state.player || {});
-    if (state.log) appendLogEntries(state.log);
+  if (!state) return;
+  setText('agm-title', state.title || '未知场景');
+  setText('agm-desc', state.description || '');
+  renderNpcList(state.npcs || []);
+  renderExits(state.exits || []);
+  renderPlayerStats(state.player || {});
+  if (state.log) appendLogEntries(state.log);
 }
 
 /**
@@ -82,10 +82,10 @@ function updatePanel(state) {
  * @param {Object} entry - 日志条目 { type, content, timestamp }
  */
 function appendLog(entry) {
-    if (!entry) return;
-    logBuffer.push(entry);
-    if (logBuffer.length > MAX_LOG_ENTRIES) logBuffer.shift();
-    renderLogBuffer();
+  if (!entry) return;
+  logBuffer.push(entry);
+  if (logBuffer.length > MAX_LOG_ENTRIES) logBuffer.shift();
+  renderLogBuffer();
 }
 
 /**
@@ -93,64 +93,72 @@ function appendLog(entry) {
  * @param {Array<Object>} entries - 日志条目数组
  */
 function appendLogEntries(entries) {
-    if (!Array.isArray(entries) || entries.length === 0) return;
-    logBuffer.push(...entries);
-    if (logBuffer.length > MAX_LOG_ENTRIES) {
-        logBuffer = logBuffer.slice(-MAX_LOG_ENTRIES);
-    }
-    renderLogBuffer();
+  if (!Array.isArray(entries) || entries.length === 0) return;
+  logBuffer.push(...entries);
+  if (logBuffer.length > MAX_LOG_ENTRIES) {
+    logBuffer = logBuffer.slice(-MAX_LOG_ENTRIES);
+  }
+  renderLogBuffer();
 }
 
 /**
  * 清空日志
  */
 function clearLog() {
-    logBuffer = [];
-    renderLogBuffer();
+  logBuffer = [];
+  renderLogBuffer();
 }
 
 /* ---------- helpers ---------- */
 
 function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
 }
 
 function renderNpcList(npcs) {
-    const list = document.getElementById('agm-npc-list');
-    if (!list) return;
-    list.innerHTML = npcs.length
-        ? npcs.map(n => `<li class="${CSS_NS}-npc">${escapeHtml(n.name)} — ${escapeHtml(n.mood || '平静')}</li>`).join('')
-        : '<li class="${CSS_NS}-empty">此处无人</li>';
+  const list = document.getElementById('agm-npc-list');
+  if (!list) return;
+  list.innerHTML = npcs.length
+    ? npcs
+        .map(
+          (n) =>
+            `<li class="${CSS_NS}-npc">${escapeHtml(n.name)} — ${escapeHtml(n.mood || '平静')}</li>`,
+        )
+        .join('')
+    : '<li class="${CSS_NS}-empty">此处无人</li>';
 }
 
 function renderExits(exits) {
-    const box = document.getElementById('agm-exit-buttons');
-    if (!box) return;
-    box.innerHTML = exits.length
-        ? exits.map(e =>
+  const box = document.getElementById('agm-exit-buttons');
+  if (!box) return;
+  box.innerHTML = exits.length
+    ? exits
+        .map(
+          (e) =>
             `<button class="menu_button ${CSS_NS}-exit-btn" data-target="${escapeHtml(e.target)}">${escapeHtml(e.label)}</button>`,
-        ).join('')
-        : '<span class="${CSS_NS}-empty">没有可见的出口</span>';
+        )
+        .join('')
+    : '<span class="${CSS_NS}-empty">没有可见的出口</span>';
 }
 
 function renderPlayerStats(player) {
-    const box = document.getElementById('agm-stats');
-    if (!box) return;
-    const stats = player.stats || {};
-    const hp = stats.hp ?? '?';
-    const maxHp = stats.maxHp ?? '?';
-    const mp = stats.mp ?? '?';
-    const maxMp = stats.maxMp ?? '?';
-    const san = stats.san ?? '?';
-    const maxSan = stats.maxSan ?? '?';
-    const items = (player.inventory || []).join(', ') || '空';
+  const box = document.getElementById('agm-stats');
+  if (!box) return;
+  const stats = player.stats || {};
+  const hp = stats.hp ?? '?';
+  const maxHp = stats.maxHp ?? '?';
+  const mp = stats.mp ?? '?';
+  const maxMp = stats.maxMp ?? '?';
+  const san = stats.san ?? '?';
+  const maxSan = stats.maxSan ?? '?';
+  const items = (player.inventory || []).join(', ') || '空';
 
-    const hpPct = (maxHp !== '?' && maxHp > 0) ? Math.round((hp / maxHp) * 100) : 0;
-    const sanPct = (maxSan !== '?' && maxSan > 0) ? Math.round((san / maxSan) * 100) : 0;
-    const mpPct = (maxMp !== '?' && maxMp > 0) ? Math.round((mp / maxMp) * 100) : 0;
+  const hpPct = maxHp !== '?' && maxHp > 0 ? Math.round((hp / maxHp) * 100) : 0;
+  const sanPct = maxSan !== '?' && maxSan > 0 ? Math.round((san / maxSan) * 100) : 0;
+  const mpPct = maxMp !== '?' && maxMp > 0 ? Math.round((mp / maxMp) * 100) : 0;
 
-    box.innerHTML = `
+  box.innerHTML = `
         <div class="${CSS_NS}-bar-row">
             <span class="${CSS_NS}-bar-label">HP</span>
             <div class="${CSS_NS}-bar-track"><div class="${CSS_NS}-bar-fill hp" style="width:${hpPct}%"></div></div>
@@ -172,69 +180,91 @@ function renderPlayerStats(player) {
 }
 
 function renderLogBuffer() {
-    const empty = document.getElementById('agm-log-empty');
-    const entries = document.getElementById('agm-log-entries');
-    if (!entries) return;
+  const empty = document.getElementById('agm-log-empty');
+  const entries = document.getElementById('agm-log-entries');
+  if (!entries) return;
 
-    if (logBuffer.length === 0) {
-        if (empty) empty.style.display = 'block';
-        entries.innerHTML = '';
-        return;
-    }
+  if (logBuffer.length === 0) {
+    if (empty) empty.style.display = 'block';
+    entries.innerHTML = '';
+    return;
+  }
 
-    if (empty) empty.style.display = 'none';
+  if (empty) empty.style.display = 'none';
 
-    const typeIcons = {
-        scene: '🏞️', combat: '⚔️', dice: '🎲', player: '🎭',
-        npc: '👤', system: '⚙️', save: '💾', error: '❌',
-    };
-    const typeLabels = {
-        scene: '场景', combat: '战斗', dice: '骰子', player: '玩家',
-        npc: 'NPC', system: '系统', save: '存档', error: '错误',
-    };
+  const typeIcons = {
+    scene: '🏞️',
+    combat: '⚔️',
+    dice: '🎲',
+    player: '🎭',
+    npc: '👤',
+    system: '⚙️',
+    save: '💾',
+    error: '❌',
+  };
+  const typeLabels = {
+    scene: '场景',
+    combat: '战斗',
+    dice: '骰子',
+    player: '玩家',
+    npc: 'NPC',
+    system: '系统',
+    save: '存档',
+    error: '错误',
+  };
 
-    entries.innerHTML = logBuffer.map(entry => {
-        const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
-        const type = entry.type || 'player';
-        const icon = typeIcons[type] || '📝';
-        const label = typeLabels[type] || type;
-        return `
+  entries.innerHTML = logBuffer
+    .map((entry) => {
+      const time = entry.timestamp
+        ? new Date(entry.timestamp).toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
+      const type = entry.type || 'player';
+      const icon = typeIcons[type] || '📝';
+      const label = typeLabels[type] || type;
+      return `
             <div class="${CSS_NS}-log-entry ${type}">
                 <span class="${CSS_NS}-log-time">${time}</span>
                 <span class="${CSS_NS}-log-type" title="${label}">${icon}</span>
                 <span class="${CSS_NS}-log-content">${escapeHtml(entry.content || '')}</span>
             </div>
         `;
-    }).join('');
+    })
+    .join('');
 
-    entries.scrollTop = entries.scrollHeight;
+  entries.scrollTop = entries.scrollHeight;
 }
 
 function bindToggleEvents(root) {
-    root.querySelectorAll(`.${CSS_NS}-section-toggle`).forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            const section = toggle.dataset.section;
-            const body = document.getElementById(`agm-${section}-body`);
-            const icon = toggle.querySelector(`.${CSS_NS}-toggle-icon`);
-            if (!body) return;
+  root.querySelectorAll(`.${CSS_NS}-section-toggle`).forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const section = toggle.dataset.section;
+      const body = document.getElementById(`agm-${section}-body`);
+      const icon = toggle.querySelector(`.${CSS_NS}-toggle-icon`);
+      if (!body) return;
 
-            const isCollapsed = body.classList.toggle('collapsed');
-            if (icon) icon.textContent = isCollapsed ? '▶' : '▼';
-            body.style.display = isCollapsed ? 'none' : 'block';
-        });
+      const isCollapsed = body.classList.toggle('collapsed');
+      if (icon) icon.textContent = isCollapsed ? '▶' : '▼';
+      body.style.display = isCollapsed ? 'none' : 'block';
     });
+  });
 }
 
 function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 
 /** 注入 SillyTavern 原生变量兼容的样式 */
 function injectStyles(root) {
-    if (document.getElementById(`${CSS_NS}-style`)) return;
-    const style = document.createElement('style');
-    style.id = `${CSS_NS}-style`;
-    style.textContent = `
+  if (document.getElementById(`${CSS_NS}-style`)) return;
+  const style = document.createElement('style');
+  style.id = `${CSS_NS}-style`;
+  style.textContent = `
         .${CSS_NS}-wrapper { display:flex; flex-direction:column; gap:0.6rem; padding:0.5rem; }
         .${CSS_NS}-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; }
         .${CSS_NS}-title { margin:0; font-size:1.05rem; color:var(--SmartThemeBodyColor); font-weight:600; }
@@ -280,20 +310,20 @@ function injectStyles(root) {
             .${CSS_NS}-log-scroll { max-height:120px; }
         }
     `;
-    (root.getRootNode() || document.head).appendChild(style);
+  (root.getRootNode() || document.head).appendChild(style);
 }
 
 /* ---------- exports ---------- */
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { initPanel, updatePanel, appendLog, appendLogEntries, clearLog };
+  module.exports = { initPanel, updatePanel, appendLog, appendLogEntries, clearLog };
 }
-window.AiGmPanel = { 
-    initPanel, 
-    updatePanel, 
-    renderText: updatePanel, 
-    renderStats: renderPlayerStats, 
-    renderLog: appendLogEntries, 
-    appendLog, 
-    appendLogEntries, 
-    clearLog, 
+window.AiGmPanel = {
+  initPanel,
+  updatePanel,
+  renderText: updatePanel,
+  renderStats: renderPlayerStats,
+  renderLog: appendLogEntries,
+  appendLog,
+  appendLogEntries,
+  clearLog,
 };

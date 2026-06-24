@@ -237,7 +237,8 @@ function createSettingsPanel() {
     enabledCheckbox.checked = settings.enabled;
     enabledCheckbox.addEventListener('change', () => {
       settings.enabled = enabledCheckbox.checked;
-      if (settings.enabled) onEnable(); else onDisable();
+      if (settings.enabled) onEnable();
+      else onDisable();
       saveSettings();
     });
   }

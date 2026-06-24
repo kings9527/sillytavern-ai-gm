@@ -31,7 +31,8 @@ function checkManifest() {
   if (!manifest.css) errors.push('manifest.json 缺少 css 字段');
   if (!manifest.js || manifest.js !== 'index.js') errors.push('manifest.json js 字段不正确');
   if (!manifest.hooks || !manifest.hooks.activate) errors.push('manifest.json 缺少 hooks.activate');
-  if (manifest.hooks?.activate !== 'init') warnings.push(`hooks.activate = ${manifest.hooks?.activate}`);
+  if (manifest.hooks?.activate !== 'init')
+    warnings.push(`hooks.activate = ${manifest.hooks?.activate}`);
 
   console.log('✅ manifest.json 字段检查通过');
 }
@@ -61,15 +62,15 @@ async function testDomMount() {
   src = src.replace(
     /import\s+\{\s*eventSource\s*,\s*event_types\s*,\s*saveSettingsDebounced\s*\}\s+from\s+['"][^'"]+['"]\s*;?/,
     'const eventSource = { on: (type, handler) => { mockEventSource.events[type] = handler; } }; ' +
-    `const event_types = ${JSON.stringify(mockEventTypes)}; ` +
-    'const saveSettingsDebounced = () => {};',
+      `const event_types = ${JSON.stringify(mockEventTypes)}; ` +
+      'const saveSettingsDebounced = () => {};',
   );
 
   src = src.replace(
     /import\s+\{\s*getContext\s*,\s*renderExtensionTemplateAsync\s*,\s*extension_settings\s*\}\s+from\s+['"][^'"]+['"]\s*;?/,
     'const getContext = () => mockContext; ' +
-    'const renderExtensionTemplateAsync = () => Promise.resolve(\'\'); ' +
-    'const extension_settings = {};',
+      "const renderExtensionTemplateAsync = () => Promise.resolve(''); " +
+      'const extension_settings = {};',
   );
 
   // 移除 UI 模块静态导入（在 VM 中不需要实际文件）
@@ -175,23 +176,25 @@ async function testDomMount() {
 function run() {
   console.log('=== AI-GM Extension DOM Integration Test ===\n');
   checkManifest();
-  testDomMount().then(() => {
-    console.log('\n--- 结果 ---');
-    if (errors.length === 0) {
-      console.log('✅ 所有检查通过');
-    } else {
-      console.log(`❌ 发现 ${errors.length} 个错误:`);
-      errors.forEach(e => console.log(`  - ${e}`));
-    }
-    if (warnings.length > 0) {
-      console.log(`⚠️  发现 ${warnings.length} 个警告:`);
-      warnings.forEach(w => console.log(`  - ${w}`));
-    }
-    process.exit(errors.length > 0 ? 1 : 0);
-  }).catch(err => {
-    console.error('测试运行异常:', err);
-    process.exit(1);
-  });
+  testDomMount()
+    .then(() => {
+      console.log('\n--- 结果 ---');
+      if (errors.length === 0) {
+        console.log('✅ 所有检查通过');
+      } else {
+        console.log(`❌ 发现 ${errors.length} 个错误:`);
+        errors.forEach((e) => console.log(`  - ${e}`));
+      }
+      if (warnings.length > 0) {
+        console.log(`⚠️  发现 ${warnings.length} 个警告:`);
+        warnings.forEach((w) => console.log(`  - ${w}`));
+      }
+      process.exit(errors.length > 0 ? 1 : 0);
+    })
+    .catch((err) => {
+      console.error('测试运行异常:', err);
+      process.exit(1);
+    });
 }
 
 run();

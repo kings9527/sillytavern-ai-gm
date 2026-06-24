@@ -146,10 +146,13 @@ Rules:
 
     const userPrompt = `Player input: "${playerInput}"`;
 
-    const response = await llmClient.chat([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ], { maxTokens: 128, temperature: 0.1 });
+    const response = await llmClient.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      { maxTokens: 128, temperature: 0.1 },
+    );
 
     if (!response || !response.content) {
       throw new Error('LLM returned empty response');
@@ -186,7 +189,10 @@ Rules:
     return {
       type: mappedType,
       target: parsed.target || null,
-      confidence: Math.max(0, Math.min(1, parsed.confidence != null ? parseFloat(parsed.confidence) : 0.5)),
+      confidence: Math.max(
+        0,
+        Math.min(1, parsed.confidence != null ? parseFloat(parsed.confidence) : 0.5),
+      ),
     };
   }
 
@@ -700,10 +706,14 @@ Rules:
       const { NPCDecisionEngine } = await import('./npc-decision.js');
       const engine = new NPCDecisionEngine(this.campaign, matchedNPC.id);
 
-      const decision = await engine.decide({
-        type: 'player_talk',
-        player_input: input,
-      }, this.llmClient, chatHistory);
+      const decision = await engine.decide(
+        {
+          type: 'player_talk',
+          player_input: input,
+        },
+        this.llmClient,
+        chatHistory,
+      );
 
       const dialogueResult = await engine.generateDialogue(
         `Player says: "${input}"`,
@@ -799,13 +809,17 @@ Rules:
     if (this.llmClient && this.llmClient.isAvailable()) {
       try {
         const sceneDesc = this.currentScene.description || '一个危险的地方';
-        const systemPrompt = '你是TRPG战斗叙事生成器。根据场景和敌人信息，生成一段紧张、生动的战斗开场描述。保持简洁（30-50字），风格克苏鲁/恐怖。返回纯文本，不要JSON。';
+        const systemPrompt =
+          '你是TRPG战斗叙事生成器。根据场景和敌人信息，生成一段紧张、生动的战斗开场描述。保持简洁（30-50字），风格克苏鲁/恐怖。返回纯文本，不要JSON。';
         const userPrompt = `场景：${sceneDesc}\n敌人：${enemyNames}\n玩家行动：${input || '发起攻击'}`;
 
-        const result = await this.llmClient.chat([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ], { maxTokens: 128, temperature: 0.8 });
+        const result = await this.llmClient.chat(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          { maxTokens: 128, temperature: 0.8 },
+        );
 
         if (result && result.content) {
           narration = result.content.trim();

@@ -14,14 +14,21 @@ class MockLLMClient {
     this._shouldFail = opts.shouldFail || false;
     this._callLog = [];
   }
-  isAvailable() { return this._available; }
+  isAvailable() {
+    return this._available;
+  }
   async chat(messages, options) {
     this._callLog.push({ messages, options });
     if (this._shouldFail) throw new Error('Mock LLM failure');
     if (this._response) return { content: this._response };
-    return { content: '{"action":"talk","confidence":0.75,"reasoning":"Mock","mood":"neutral","target_id":"player"}' };
+    return {
+      content:
+        '{"action":"talk","confidence":0.75,"reasoning":"Mock","mood":"neutral","target_id":"player"}',
+    };
   }
-  getCallLog() { return this._callLog; }
+  getCallLog() {
+    return this._callLog;
+  }
 }
 
 const testModule = {
@@ -51,9 +58,7 @@ const testModule = {
         trusted: '“我相信你。”',
         suspicious: '“我凭什么相信你？”',
       },
-      secrets: [
-        { keyword: 'cult', clue_id: 'clue_1', reveal_text: '“那个邪教……在地下室集会。”' },
-      ],
+      secrets: [{ keyword: 'cult', clue_id: 'clue_1', reveal_text: '“那个邪教……在地下室集会。”' }],
     },
     enemy1: {
       id: 'enemy1',
@@ -84,8 +89,28 @@ function makeCampaign(overrides = {}) {
       status_effects: [],
     },
     npcs_state: {
-      npc1: { id: 'npc1', current_hp: 10, max_hp: 10, attitude: 'neutral', trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [] },
-      enemy1: { id: 'enemy1', current_hp: 20, max_hp: 20, attitude: 'hostile', trust: 0, fear: 10, suspicion: 50, known_topics: [], secrets_revealed: [] },
+      npc1: {
+        id: 'npc1',
+        current_hp: 10,
+        max_hp: 10,
+        attitude: 'neutral',
+        trust: 30,
+        fear: 20,
+        suspicion: 30,
+        known_topics: [],
+        secrets_revealed: [],
+      },
+      enemy1: {
+        id: 'enemy1',
+        current_hp: 20,
+        max_hp: 20,
+        attitude: 'hostile',
+        trust: 0,
+        fear: 10,
+        suspicion: 50,
+        known_topics: [],
+        secrets_revealed: [],
+      },
     },
     global_vars: {},
     combat_state: null,
@@ -115,9 +140,7 @@ function assert(condition, message) {
 
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {
-    throw new Error(
-      (message || 'Assertion failed') + ` — expected: ${expected}, got: ${actual}`,
-    );
+    throw new Error((message || 'Assertion failed') + ` — expected: ${expected}, got: ${actual}`);
   }
 }
 
@@ -173,7 +196,8 @@ async function testLLMFallback() {
   test('LLM fallback triggers when rule confidence < 0.85', async () => {
     const engine = new NPCDecisionEngine(campaign, 'npc1');
     const mockClient = new MockLLMClient({
-      response: '{"action":"talk","confidence":0.85,"reasoning":"试探","mood":"curious","target_id":"player","dialogue_topic":"greeting"}',
+      response:
+        '{"action":"talk","confidence":0.85,"reasoning":"试探","mood":"curious","target_id":"player","dialogue_topic":"greeting"}',
     });
     // Neutral attitude + non-combat + no critical state = low rule confidence
     const decision = await engine.decide({ type: 'player_talk', player_input: '你好' }, mockClient);
@@ -185,13 +209,14 @@ async function testLLMFallback() {
   test('LLM fallback with chat history included in prompt', async () => {
     const engine = new NPCDecisionEngine(campaign, 'npc1');
     const mockClient = new MockLLMClient({
-      response: '{"action":"talk","confidence":0.8,"reasoning":"回应","mood":"friendly","target_id":"player"}',
+      response:
+        '{"action":"talk","confidence":0.8,"reasoning":"回应","mood":"friendly","target_id":"player"}',
     });
     const chatHistory = '玩家: 你在这里做什么？\nNPC: 这不关你的事。';
     await engine.decide({ type: 'player_talk', player_input: '告诉我' }, mockClient, chatHistory);
     const calls = mockClient.getCallLog();
     assert(calls.length > 0, 'LLM should be called');
-    const lastUserMsg = calls[0].messages.find(m => m.role === 'user');
+    const lastUserMsg = calls[0].messages.find((m) => m.role === 'user');
     assert(lastUserMsg.content.includes('Recent conversation'), 'Chat history should be in prompt');
     assert(lastUserMsg.content.includes('你在这里做什么'), 'Chat content should be in prompt');
   });
@@ -226,26 +251,28 @@ async function testChatHistory() {
   test('Empty chat history does not break prompt', async () => {
     const engine = new NPCDecisionEngine(campaign, 'npc1');
     const mockClient = new MockLLMClient({
-      response: '{"action":"ignore","confidence":0.6,"reasoning":"无感","mood":"neutral","target_id":null}',
+      response:
+        '{"action":"ignore","confidence":0.6,"reasoning":"无感","mood":"neutral","target_id":null}',
     });
     const decision = await engine.decide({ type: 'idle' }, mockClient, '');
     assertEqual(decision.action, 'ignore', 'Expected ignore action');
     const calls = mockClient.getCallLog();
     assert(calls.length > 0, 'LLM should be called');
-    const userMsg = calls[0].messages.find(m => m.role === 'user');
+    const userMsg = calls[0].messages.find((m) => m.role === 'user');
     assert(!userMsg.content.includes('Recent conversation'), 'Empty chat should be omitted');
   });
 
   test('Long chat history truncated gracefully in prompt', async () => {
     const engine = new NPCDecisionEngine(campaign, 'npc1');
     const mockClient = new MockLLMClient({
-      response: '{"action":"talk","confidence":0.7,"reasoning":"回应","mood":"neutral","target_id":"player"}',
+      response:
+        '{"action":"talk","confidence":0.7,"reasoning":"回应","mood":"neutral","target_id":"player"}',
     });
     const longHistory = Array(50).fill('玩家: 测试').join('\n');
     await engine.decide({ type: 'player_talk' }, mockClient, longHistory);
     const calls = mockClient.getCallLog();
     assert(calls.length > 0, 'LLM should be called');
-    const userMsg = calls[0].messages.find(m => m.role === 'user');
+    const userMsg = calls[0].messages.find((m) => m.role === 'user');
     assert(userMsg.content.length > 0, 'Prompt should not be empty');
   });
 }
@@ -257,12 +284,13 @@ async function testPromptBuilderIntegration() {
   test('GM context from PromptBuilder is included in system prompt', async () => {
     const engine = new NPCDecisionEngine(campaign, 'npc1');
     const mockClient = new MockLLMClient({
-      response: '{"action":"talk","confidence":0.75,"reasoning":"GM上下文","mood":"neutral","target_id":"player"}',
+      response:
+        '{"action":"talk","confidence":0.75,"reasoning":"GM上下文","mood":"neutral","target_id":"player"}',
     });
     await engine.decide({ type: 'player_talk' }, mockClient);
     const calls = mockClient.getCallLog();
     assert(calls.length > 0, 'LLM should be called');
-    const sysMsg = calls[0].messages.find(m => m.role === 'system');
+    const sysMsg = calls[0].messages.find((m) => m.role === 'system');
     assert(sysMsg.content.includes('Game Master'), 'GM context should be present');
     assert(sysMsg.content.includes('Current Scene'), 'Scene context should be present');
   });

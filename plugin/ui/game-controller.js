@@ -241,9 +241,11 @@ function syncToUI(state) {
     }
 
     // 触发全局状态更新事件
-    document.dispatchEvent(new CustomEvent('ai-gm:state-sync', {
-      detail: { state, campaign, timestamp: Date.now() },
-    }));
+    document.dispatchEvent(
+      new CustomEvent('ai-gm:state-sync', {
+        detail: { state, campaign, timestamp: Date.now() },
+      }),
+    );
   } catch (err) {
     console.error('[GameController] syncToUI 错误:', err.message);
   }
@@ -289,9 +291,12 @@ function handleFailure(reason) {
 
   // 尝试单次重连
   if (reconnectTimer) clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(() => {
-    if (isRunning) fetchGameState();
-  }, Math.min(pollIntervalMs, 10000));
+  reconnectTimer = setTimeout(
+    () => {
+      if (isRunning) fetchGameState();
+    },
+    Math.min(pollIntervalMs, 10000),
+  );
 }
 
 /**
@@ -309,9 +314,11 @@ function updateConnectionStatus(status, message) {
   statusEl.textContent = `${icons[status] || '⚪'} ${message}`;
   statusEl.className = `ai-gm-status ai-gm-status-${status}`;
 
-  document.dispatchEvent(new CustomEvent('ai-gm:connection-change', {
-    detail: { status, message, campaign },
-  }));
+  document.dispatchEvent(
+    new CustomEvent('ai-gm:connection-change', {
+      detail: { status, message, campaign },
+    }),
+  );
 }
 
 /**

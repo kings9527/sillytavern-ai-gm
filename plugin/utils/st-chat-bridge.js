@@ -236,7 +236,8 @@ export class STChatBridge {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'mes ai-gm-system-inject';
-    wrapper.style.cssText = 'opacity:0.85; font-style:italic; border-left:3px solid #8b5cf6; padding-left:8px; margin:4px 0;';
+    wrapper.style.cssText =
+      'opacity:0.85; font-style:italic; border-left:3px solid #8b5cf6; padding-left:8px; margin:4px 0;';
     wrapper.innerHTML = `
       <div class="mes_text" style="color:#a78bfa;">
         <small>${icons[type] || '🔹'} AI-GM</small><br/>

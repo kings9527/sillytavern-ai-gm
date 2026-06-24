@@ -132,9 +132,7 @@ async function runTests() {
   // Test 4: LLM throws error → fallback to keyword
   console.log('Test 4: LLM throws error → fallback to keyword');
   {
-    const mockLLM = createMockLLMClient([
-      new Error('Network timeout'),
-    ]);
+    const mockLLM = createMockLLMClient([new Error('Network timeout')]);
     const gsm = new GameStateMachine(TEST_MODULE, TEST_CAMPAIGN, mockLLM);
     const result = await gsm.parseIntent('打开铁门');
     assertEqual(result.type, 'interact', 'LLM error should fallback to keyword "interact"');
@@ -145,12 +143,14 @@ async function runTests() {
   // Test 5: LLM returns malformed JSON → fallback to keyword
   console.log('Test 5: LLM returns malformed JSON → fallback to keyword');
   {
-    const mockLLM = createMockLLMClient([
-      { content: 'not valid json at all' },
-    ]);
+    const mockLLM = createMockLLMClient([{ content: 'not valid json at all' }]);
     const gsm = new GameStateMachine(TEST_MODULE, TEST_CAMPAIGN, mockLLM);
     const result = await gsm.parseIntent('做个骰子检定');
-    assertEqual(result.type, 'dice_check', 'Malformed JSON should fallback to keyword "dice_check"');
+    assertEqual(
+      result.type,
+      'dice_check',
+      'Malformed JSON should fallback to keyword "dice_check"',
+    );
     assertTrue(result.llm_enhanced !== true, 'Should NOT be llm_enhanced on parse error');
   }
 
@@ -220,7 +220,10 @@ async function runTests() {
     let callCount = 0;
     const mockLLM = {
       isAvailable: () => true,
-      chat: async () => { callCount++; return { content: '{"action": "move", "confidence": 0.9}' }; },
+      chat: async () => {
+        callCount++;
+        return { content: '{"action": "move", "confidence": 0.9}' };
+      },
     };
     const gsm = new GameStateMachine(TEST_MODULE, TEST_CAMPAIGN, mockLLM);
     const result = await gsm.parseIntent('', 'inspect');
@@ -306,7 +309,10 @@ async function runTests() {
     };
     const result = await gsm.processAction(action);
     assertEqual(result.type, 'interaction', 'processAction should handle inspect intent');
-    assertTrue(result.narration.includes('地下室'), 'Narration should reflect scene description on inspect');
+    assertTrue(
+      result.narration.includes('地下室'),
+      'Narration should reflect scene description on inspect',
+    );
   }
 
   // Test 18: LLM isAvailable returns false → keyword path
@@ -314,7 +320,9 @@ async function runTests() {
   {
     const mockLLM = {
       isAvailable: () => false,
-      chat: async () => { throw new Error('should not be called'); },
+      chat: async () => {
+        throw new Error('should not be called');
+      },
     };
     const gsm = new GameStateMachine(TEST_MODULE, TEST_CAMPAIGN, mockLLM);
     const result = await gsm.parseIntent('攻击敌人');

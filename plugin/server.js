@@ -1043,7 +1043,8 @@ function getArkhamNightModule() {
 export const info = {
   id: 'ai-gm',
   name: 'AI-GM',
-  description: 'AI Game Master for SillyTavern — Cthulhu-style solo TRPG experience with LLM-driven storytelling',
+  description:
+    'AI Game Master for SillyTavern — Cthulhu-style solo TRPG experience with LLM-driven storytelling',
 };
 
 /**

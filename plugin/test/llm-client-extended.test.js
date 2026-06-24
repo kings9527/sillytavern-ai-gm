@@ -56,7 +56,11 @@ console.log('=== LLM Client Extended Tests ===\n');
 // --- _extractJSON ---
 console.log('--- _extractJSON ---');
 
-const client = new LLMClient({ provider: 'openai', apiKey: 'test', baseUrl: 'http://127.0.0.1:59999est' });
+const client = new LLMClient({
+  provider: 'openai',
+  apiKey: 'test',
+  baseUrl: 'http://127.0.0.1:59999est',
+});
 
 test('_extractJSON parses direct JSON', () => {
   const result = client._extractJSON('{"action":"attack"}');
@@ -125,10 +129,9 @@ test('chatJSON with jsonSchema includes schema in instruction', async () => {
     model: 'gpt-4',
   });
   const c = new LLMClient({ provider: 'openai', apiKey: 'k', baseUrl: 'http://127.0.0.1:59999' });
-  const result = await c.chatJSON(
-    [{ role: 'user', content: 'hello' }],
-    { jsonSchema: { type: 'object', properties: { name: { type: 'string' } } } },
-  );
+  const result = await c.chatJSON([{ role: 'user', content: 'hello' }], {
+    jsonSchema: { type: 'object', properties: { name: { type: 'string' } } },
+  });
   assert(result.name === 'test', 'Expected parsed name');
   restoreFetch();
 });
@@ -199,10 +202,11 @@ test('_sendClaudeRequest returns parsed response', async () => {
     model: 'claude-3',
   });
   const c = new LLMClient({ provider: 'claude', apiKey: 'k', baseUrl: 'http://127.0.0.1:59999' });
-  const resp = await c._sendClaudeRequest(
-    [{ role: 'user', content: 'hi' }],
-    { ...c.config, model: 'claude-3', maxTokens: 1024 },
-  );
+  const resp = await c._sendClaudeRequest([{ role: 'user', content: 'hi' }], {
+    ...c.config,
+    model: 'claude-3',
+    maxTokens: 1024,
+  });
   assert(resp.content === 'Claude says hi', 'Expected content');
   assert(resp.model === 'claude-3', 'Expected model');
   restoreFetch();
@@ -215,7 +219,10 @@ test('_sendClaudeRequest handles system messages', async () => {
   });
   const c = new LLMClient({ provider: 'claude', apiKey: 'k', baseUrl: 'http://127.0.0.1:59999' });
   const resp = await c._sendClaudeRequest(
-    [{ role: 'system', content: 'sys' }, { role: 'user', content: 'hi' }],
+    [
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'hi' },
+    ],
     c.config,
   );
   assert(resp.content === 'ok', 'Expected content');
@@ -281,7 +288,12 @@ test('chat retries on server error then succeeds', async () => {
       json: async () => ({ choices: [{ message: { content: 'ok' } }], usage: {} }),
     };
   };
-  const c = new LLMClient({ provider: 'openai', apiKey: 'k', baseUrl: 'http://127.0.0.1:59999', retries: 1 });
+  const c = new LLMClient({
+    provider: 'openai',
+    apiKey: 'k',
+    baseUrl: 'http://127.0.0.1:59999',
+    retries: 1,
+  });
   const resp = await c.chat([{ role: 'user', content: 'hi' }]);
   assert(resp.content === 'ok', 'Expected success after retry');
   assert(callCount === 2, 'Expected 2 calls');
@@ -294,7 +306,12 @@ test('chat does not retry on 4xx client error', async () => {
     callCount++;
     return { ok: false, status: 400, statusText: 'Bad Request', json: async () => ({}) };
   };
-  const c = new LLMClient({ provider: 'openai', apiKey: 'k', baseUrl: 'http://127.0.0.1:59999', retries: 2 });
+  const c = new LLMClient({
+    provider: 'openai',
+    apiKey: 'k',
+    baseUrl: 'http://127.0.0.1:59999',
+    retries: 2,
+  });
   let threw = false;
   try {
     await c.chat([{ role: 'user', content: 'hi' }]);
@@ -386,7 +403,11 @@ test('_sendRequest routes to ollama', async () => {
 
 test('_sendRequest routes to sillytavern', async () => {
   mockFetch({ choices: [{ message: { content: 'st' } }], usage: {} });
-  const c = new LLMClient({ provider: 'sillytavern', apiKey: '', baseUrl: 'http://127.0.0.1:59999' });
+  const c = new LLMClient({
+    provider: 'sillytavern',
+    apiKey: '',
+    baseUrl: 'http://127.0.0.1:59999',
+  });
   const resp = await c._sendRequest([], { provider: 'sillytavern' });
   assert(resp.content === 'st', 'Expected sillytavern response');
   restoreFetch();

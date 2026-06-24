@@ -37,15 +37,24 @@ console.log('--- Static Event Hook Analysis ---');
 const indexSrc = fs.readFileSync(path.join(ROOT, 'index.js'), 'utf-8');
 
 test('index.js binds CHAT_CHANGED event', () => {
-  assert(indexSrc.includes('eventSource.on(event_types.CHAT_CHANGED'), 'Expected CHAT_CHANGED binding');
+  assert(
+    indexSrc.includes('eventSource.on(event_types.CHAT_CHANGED'),
+    'Expected CHAT_CHANGED binding',
+  );
 });
 
 test('index.js binds CHARACTER_MESSAGE_RENDERED event', () => {
-  assert(indexSrc.includes('eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED'), 'Expected CHARACTER_MESSAGE_RENDERED binding');
+  assert(
+    indexSrc.includes('eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED'),
+    'Expected CHARACTER_MESSAGE_RENDERED binding',
+  );
 });
 
 test('index.js binds USER_MESSAGE_RENDERED event', () => {
-  assert(indexSrc.includes('eventSource.on(event_types.USER_MESSAGE_RENDERED'), 'Expected USER_MESSAGE_RENDERED binding');
+  assert(
+    indexSrc.includes('eventSource.on(event_types.USER_MESSAGE_RENDERED'),
+    'Expected USER_MESSAGE_RENDERED binding',
+  );
 });
 
 test('index.js exports init function', () => {
@@ -53,7 +62,11 @@ test('index.js exports init function', () => {
 });
 
 test('index.js exports onEnable function', () => {
-  assert(indexSrc.includes('export async function onEnable') || indexSrc.includes('export function onEnable'), 'Expected export onEnable');
+  assert(
+    indexSrc.includes('export async function onEnable') ||
+      indexSrc.includes('export function onEnable'),
+    'Expected export onEnable',
+  );
 });
 
 test('index.js exports onDisable function', () => {
@@ -101,19 +114,31 @@ test('index.js has isEnabled state guard', () => {
 });
 
 test('index.js has gameController refreshState call', () => {
-  assert(indexSrc.includes('gameController.refreshState'), 'Expected gameController.refreshState call');
+  assert(
+    indexSrc.includes('gameController.refreshState'),
+    'Expected gameController.refreshState call',
+  );
 });
 
 test('index.js has stChatBridge.onChatChanged call', () => {
-  assert(indexSrc.includes('stChatBridge.onChatChanged'), 'Expected stChatBridge.onChatChanged call');
+  assert(
+    indexSrc.includes('stChatBridge.onChatChanged'),
+    'Expected stChatBridge.onChatChanged call',
+  );
 });
 
 test('index.js has stChatBridge.onCharacterMessage call', () => {
-  assert(indexSrc.includes('stChatBridge.onCharacterMessage'), 'Expected stChatBridge.onCharacterMessage call');
+  assert(
+    indexSrc.includes('stChatBridge.onCharacterMessage'),
+    'Expected stChatBridge.onCharacterMessage call',
+  );
 });
 
 test('index.js has stChatBridge.onUserMessage call', () => {
-  assert(indexSrc.includes('stChatBridge.onUserMessage'), 'Expected stChatBridge.onUserMessage call');
+  assert(
+    indexSrc.includes('stChatBridge.onUserMessage'),
+    'Expected stChatBridge.onUserMessage call',
+  );
 });
 
 test('index.js checks stChatBridge before calling methods', () => {
@@ -126,7 +151,10 @@ test('index.js has onDisable cleanup for stChatBridge', () => {
 });
 
 test('index.js has onDisable cleanup for gameController', () => {
-  assert(indexSrc.includes('gameController.destroy'), 'Expected gameController.destroy in onDisable');
+  assert(
+    indexSrc.includes('gameController.destroy'),
+    'Expected gameController.destroy in onDisable',
+  );
   assert(indexSrc.includes('gameController = null'), 'Expected gameController null cleanup');
 });
 
@@ -157,7 +185,10 @@ test('index.js imports all 4 UI modules', () => {
   assert(indexSrc.includes("import './ui/panel.js'"), 'Expected panel.js import');
   assert(indexSrc.includes("import './ui/npc-card.js'"), 'Expected npc-card.js import');
   assert(indexSrc.includes("import './ui/scene-renderer.js'"), 'Expected scene-renderer.js import');
-  assert(indexSrc.includes("import './ui/game-controller.js'"), 'Expected game-controller.js import');
+  assert(
+    indexSrc.includes("import './ui/game-controller.js'"),
+    'Expected game-controller.js import',
+  );
 });
 
 test('index.js imports STChatBridge', () => {
@@ -238,16 +269,25 @@ const originalResolve = path.resolve;
 test('Event binding patterns are complete (static analysis)', () => {
   // Count eventSource.on calls
   const eventOnMatches = indexSrc.match(/eventSource\.on\(/g);
-  assert(eventOnMatches && eventOnMatches.length >= 3, `Expected at least 3 eventSource.on calls, found ${eventOnMatches?.length || 0}`);
-  
+  assert(
+    eventOnMatches && eventOnMatches.length >= 3,
+    `Expected at least 3 eventSource.on calls, found ${eventOnMatches?.length || 0}`,
+  );
+
   // Verify each handler is a function that checks isEnabled
-  const chatChangedHandler = indexSrc.match(/eventSource\.on\(event_types\.CHAT_CHANGED,\s*\(\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/);
+  const chatChangedHandler = indexSrc.match(
+    /eventSource\.on\(event_types\.CHAT_CHANGED,\s*\(\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/,
+  );
   assert(chatChangedHandler, 'Expected CHAT_CHANGED handler with isEnabled check');
-  
-  const charMsgHandler = indexSrc.match(/eventSource\.on\(event_types\.CHARACTER_MESSAGE_RENDERED,\s*\(messageId\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/);
+
+  const charMsgHandler = indexSrc.match(
+    /eventSource\.on\(event_types\.CHARACTER_MESSAGE_RENDERED,\s*\(messageId\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/,
+  );
   assert(charMsgHandler, 'Expected CHARACTER_MESSAGE_RENDERED handler with isEnabled check');
-  
-  const userMsgHandler = indexSrc.match(/eventSource\.on\(event_types\.USER_MESSAGE_RENDERED,\s*\(messageId\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/);
+
+  const userMsgHandler = indexSrc.match(
+    /eventSource\.on\(event_types\.USER_MESSAGE_RENDERED,\s*\(messageId\)\s*=>\s*\{[\s\S]*?if\s*\(isEnabled.*?\)[\s\S]*?\}\s*\);/,
+  );
   assert(userMsgHandler, 'Expected USER_MESSAGE_RENDERED handler with isEnabled check');
 });
 
@@ -267,7 +307,10 @@ test('All required UI elements are referenced in createSettingsPanel', () => {
 });
 
 test('Extension settings are persisted and loaded correctly', () => {
-  assert(indexSrc.includes('extension_settings[EXTENSION_NAME]'), 'Expected settings persistence via extension_settings');
+  assert(
+    indexSrc.includes('extension_settings[EXTENSION_NAME]'),
+    'Expected settings persistence via extension_settings',
+  );
   assert(indexSrc.includes('saveSettingsDebounced'), 'Expected saveSettingsDebounced call');
   assert(indexSrc.includes('loadSettings()'), 'Expected loadSettings call in init');
 });

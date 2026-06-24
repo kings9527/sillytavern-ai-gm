@@ -54,9 +54,7 @@ function buildCampaign(npcOverrides = {}) {
           hp: 10,
           sanity: 50,
           personality: '沉默寡言的学者',
-          secrets: [
-            { keyword: '仪式', reveal_text: '我知道如何召唤旧日支配者...' },
-          ],
+          secrets: [{ keyword: '仪式', reveal_text: '我知道如何召唤旧日支配者...' }],
           dialogue: {
             default: '“需要什么帮助吗？”',
             trusted: '“我信任你。这个秘密我只告诉你...”',
@@ -105,7 +103,20 @@ console.log('--- Death Check ---');
 test('Dead NPC returns dead action', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 0, current_san: 50, attitude: 'neutral', is_alive: false, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 0,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: false,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'player_talk' });
@@ -117,7 +128,20 @@ test('Dead NPC returns dead action', async () => {
 test('Zero HP returns dead action', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    enemy1: { id: 'enemy1', current_hp: 0, current_san: 80, attitude: 'hostile', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    enemy1: {
+      id: 'enemy1',
+      current_hp: 0,
+      current_san: 80,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const decision = await engine.decide({ type: 'player_attack' });
@@ -130,7 +154,20 @@ console.log('\n--- Attitude Transitions ---');
 test('Player attack transitions neutral to hostile', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'player_attack' });
@@ -143,7 +180,20 @@ test('Player attack transitions neutral to hostile', async () => {
 test('Player help transitions neutral to friendly', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'player_help' });
@@ -156,7 +206,20 @@ test('Player help transitions neutral to friendly', async () => {
 test('Player threat transitions neutral to afraid', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'player_threat' });
@@ -169,7 +232,20 @@ test('Player threat transitions neutral to afraid', async () => {
 test('Combat start transitions friendly to hostile', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'friendly', is_alive: true, trust: 60, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 60,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'combat_start' });
@@ -184,7 +260,20 @@ test('Enemy in combat attacks player', async () => {
   const campaign = buildCampaign();
   campaign.combat_state = { active: true, current_turn: 'player_1' };
   campaign.npcs_state = {
-    enemy1: { id: 'enemy1', current_hp: 15, current_san: 80, attitude: 'hostile', is_alive: true, trust: 10, fear: 20, suspicion: 50, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    enemy1: {
+      id: 'enemy1',
+      current_hp: 15,
+      current_san: 80,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 10,
+      fear: 20,
+      suspicion: 50,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const decision = await engine.decide({ type: 'combat_turn' });
@@ -197,7 +286,20 @@ test('Boss in combat uses special attack', async () => {
   const campaign = buildCampaign();
   campaign.combat_state = { active: true, current_turn: 'boss' };
   campaign.npcs_state = {
-    boss: { id: 'boss', current_hp: 50, current_san: 100, attitude: 'hostile', is_alive: true, trust: 0, fear: 0, suspicion: 80, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    boss: {
+      id: 'boss',
+      current_hp: 50,
+      current_san: 100,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 0,
+      fear: 0,
+      suspicion: 80,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'boss');
   // Mock Math.random to force special_attack
@@ -213,7 +315,20 @@ test('Boss with low HP still special attacks', async () => {
   const campaign = buildCampaign();
   campaign.combat_state = { active: true, current_turn: 'boss' };
   campaign.npcs_state = {
-    boss: { id: 'boss', current_hp: 5, current_san: 100, attitude: 'hostile_alerted', is_alive: true, trust: 0, fear: 0, suspicion: 80, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    boss: {
+      id: 'boss',
+      current_hp: 5,
+      current_san: 100,
+      attitude: 'hostile_alerted',
+      is_alive: true,
+      trust: 0,
+      fear: 0,
+      suspicion: 80,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'boss');
   const decision = await engine.decide({ type: 'combat_turn' });
@@ -225,7 +340,20 @@ test('Low HP minion flees instead of fighting', async () => {
   const campaign = buildCampaign();
   campaign.combat_state = { active: true, current_turn: 'enemy1' };
   campaign.npcs_state = {
-    enemy1: { id: 'enemy1', current_hp: 2, current_san: 80, attitude: 'hostile', is_alive: true, trust: 10, fear: 20, suspicion: 50, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    enemy1: {
+      id: 'enemy1',
+      current_hp: 2,
+      current_san: 80,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 10,
+      fear: 20,
+      suspicion: 50,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const decision = await engine.decide({ type: 'combat_turn' });
@@ -237,7 +365,20 @@ test('Ally in combat helps player', async () => {
   const campaign = buildCampaign();
   campaign.combat_state = { active: true, current_turn: 'ally' };
   campaign.npcs_state = {
-    ally: { id: 'ally', current_hp: 8, current_san: 55, attitude: 'friendly', is_alive: true, trust: 70, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    ally: {
+      id: 'ally',
+      current_hp: 8,
+      current_san: 55,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 70,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'ally');
   const decision = await engine.decide({ type: 'combat_turn' });
@@ -251,7 +392,20 @@ console.log('\n--- SAN Break / Critical HP ---');
 test('SAN zero causes flee', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 0, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 0,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const decision = await engine.decide({ type: 'player_talk' });
@@ -262,7 +416,20 @@ test('SAN zero causes flee', async () => {
 test('Boss ignores SAN break', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    boss: { id: 'boss', current_hp: 50, current_san: 0, attitude: 'hostile', is_alive: true, trust: 0, fear: 0, suspicion: 80, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    boss: {
+      id: 'boss',
+      current_hp: 50,
+      current_san: 0,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 0,
+      fear: 0,
+      suspicion: 80,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'boss');
   const decision = await engine.decide({ type: 'combat_turn' });
@@ -276,7 +443,20 @@ console.log('\n--- Dialogue Generation ---');
 test('Template dialogue generation with mood', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const dialogue = await engine.generateDialogue('玩家进入图书馆', 'friendly', 'greeting');
@@ -288,19 +468,51 @@ test('Template dialogue generation with mood', async () => {
 test('Template dialogue with secret topic', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'friendly', is_alive: true, trust: 70, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 70,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const dialogue = await engine.generateDialogue('玩家询问秘密', 'whispering', 'secret');
   assert(dialogue.text.length > 0, 'Expected non-empty dialogue');
-  assert(dialogue.secretRevealed === '仪式', `Expected secret revealed, got ${dialogue.secretRevealed}`);
-  assert(campaign.npcs_state.librarian.secrets_revealed.includes('仪式'), 'Expected secret tracked in state');
+  assert(
+    dialogue.secretRevealed === '仪式',
+    `Expected secret revealed, got ${dialogue.secretRevealed}`,
+  );
+  assert(
+    campaign.npcs_state.librarian.secrets_revealed.includes('仪式'),
+    'Expected secret tracked in state',
+  );
 });
 
 test('Template dialogue with high trust adds trusted line', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'friendly', is_alive: true, trust: 75, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 75,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const dialogue = await engine.generateDialogue('玩家对话', 'friendly', 'greeting');
@@ -310,7 +522,20 @@ test('Template dialogue with high trust adds trusted line', async () => {
 test('Template dialogue with high suspicion adds suspicious line', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 50, suspicion: 75, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 50,
+      suspicion: 75,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const dialogue = await engine.generateDialogue('玩家对话', 'suspicious', 'greeting');
@@ -323,13 +548,33 @@ console.log('\n--- LLM-Enhanced Decision ---');
 test('LLM enhanced decision when rule confidence is low', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const mockLLM = {
     isAvailable: () => true,
     chat: async () => ({
-      content: JSON.stringify({ action: 'talk', confidence: 0.9, reasoning: 'LLM says talk', mood: 'curious', target_id: 'player', dialogue_topic: 'books' }),
+      content: JSON.stringify({
+        action: 'talk',
+        confidence: 0.9,
+        reasoning: 'LLM says talk',
+        mood: 'curious',
+        target_id: 'player',
+        dialogue_topic: 'books',
+      }),
     }),
   };
   // Use a vague situation where rule confidence is low
@@ -342,12 +587,27 @@ test('LLM enhanced decision when rule confidence is low', async () => {
 test('LLM fallback when LLM throws error', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const mockLLM = {
     isAvailable: () => true,
-    chat: async () => { throw new Error('LLM timeout'); },
+    chat: async () => {
+      throw new Error('LLM timeout');
+    },
   };
   const decision = await engine.decide({ type: 'player_talk' }, mockLLM);
   // Should fallback to attitude-based or default
@@ -358,7 +618,20 @@ test('LLM fallback when LLM throws error', async () => {
 test('LLM unavailable falls back to attitude-based', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const mockLLM = {
@@ -376,7 +649,20 @@ console.log('\n--- State Update ---');
 test('updateState applies damage', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'attack' }, { damage_taken: 3 });
@@ -387,7 +673,20 @@ test('updateState applies damage', () => {
 test('updateState applies healing', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 5, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 5,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'heal' }, { healing_received: 3 });
@@ -397,7 +696,20 @@ test('updateState applies healing', () => {
 test('updateState caps HP at max', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 9, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 9,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'heal' }, { healing_received: 5 });
@@ -407,7 +719,20 @@ test('updateState caps HP at max', () => {
 test('updateState applies sanity loss', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'sanity_loss' }, { sanity_loss: 10 });
@@ -417,10 +742,26 @@ test('updateState applies sanity loss', () => {
 test('updateState applies trust/fear/suspicion deltas', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 50, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 50,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const updated = engine.updateState({ action: 'talk' }, { trust_delta: 10, fear_delta: -5, suspicion_delta: 15 });
+  const updated = engine.updateState(
+    { action: 'talk' },
+    { trust_delta: 10, fear_delta: -5, suspicion_delta: 15 },
+  );
   assert(updated.trust === 60, `Expected trust 60, got ${updated.trust}`);
   assert(updated.fear === 15, `Expected fear 15, got ${updated.fear}`);
   assert(updated.suspicion === 45, `Expected suspicion 45, got ${updated.suspicion}`);
@@ -429,10 +770,26 @@ test('updateState applies trust/fear/suspicion deltas', () => {
 test('updateState caps stats at 0-100', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 95, fear: 5, suspicion: 95, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 95,
+      fear: 5,
+      suspicion: 95,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const updated = engine.updateState({ action: 'talk' }, { trust_delta: 10, fear_delta: -10, suspicion_delta: 10 });
+  const updated = engine.updateState(
+    { action: 'talk' },
+    { trust_delta: 10, fear_delta: -10, suspicion_delta: 10 },
+  );
   assert(updated.trust === 100, `Expected trust capped at 100, got ${updated.trust}`);
   assert(updated.fear === 0, `Expected fear floored at 0, got ${updated.fear}`);
   assert(updated.suspicion === 100, `Expected suspicion capped at 100, got ${updated.suspicion}`);
@@ -441,17 +798,46 @@ test('updateState caps stats at 0-100', () => {
 test('updateState auto-corrects attitude from trust', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'hostile', is_alive: true, trust: 65, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 65,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'talk' }, {});
-  assert(updated.attitude === 'friendly', `Expected friendly from high trust, got ${updated.attitude}`);
+  assert(
+    updated.attitude === 'friendly',
+    `Expected friendly from high trust, got ${updated.attitude}`,
+  );
 });
 
 test('updateState auto-corrects attitude from fear', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 50, fear: 75, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 50,
+      fear: 75,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'talk' }, {});
@@ -461,7 +847,20 @@ test('updateState auto-corrects attitude from fear', () => {
 test('updateState kills NPC when HP reaches 0', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 3, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 3,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'attack' }, { damage_taken: 5 });
@@ -473,7 +872,20 @@ test('updateState kills NPC when HP reaches 0', () => {
 test('updateState increments turns_in_scene', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 5, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 5,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'talk' }, {});
@@ -487,7 +899,21 @@ console.log('\n--- getStateSummary ---');
 test('getStateSummary returns correct structure', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 7, current_san: 50, attitude: 'friendly', is_alive: true, trust: 60, fear: 10, suspicion: 10, known_topics: ['books'], secrets_revealed: ['仪式'], turns_in_scene: 3, current_action: 'talk', custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 7,
+      current_san: 50,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 60,
+      fear: 10,
+      suspicion: 10,
+      known_topics: ['books'],
+      secrets_revealed: ['仪式'],
+      turns_in_scene: 3,
+      current_action: 'talk',
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const summary = engine.getStateSummary();
@@ -510,10 +936,26 @@ console.log('\n--- Secret / Topic Detection ---');
 test('Player talk with secret keyword triggers evade when trust low', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'player_talk', player_input: '告诉我关于仪式的事情' });
+  const decision = await engine.decide({
+    type: 'player_talk',
+    player_input: '告诉我关于仪式的事情',
+  });
   assert(decision.action === 'evade', `Expected evade, got ${decision.action}`);
   assert(decision.mood === 'suspicious', 'Expected suspicious mood');
   assert(campaign.npcs_state.librarian.suspicion > 30, 'Expected suspicion increased');
@@ -522,24 +964,59 @@ test('Player talk with secret keyword triggers evade when trust low', async () =
 test('Player talk with secret keyword reveals secret when trust high', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'friendly', is_alive: true, trust: 65, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 65,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'player_talk', player_input: '告诉我关于仪式的事情' });
+  const decision = await engine.decide({
+    type: 'player_talk',
+    player_input: '告诉我关于仪式的事情',
+  });
   assert(decision.action === 'talk', `Expected talk, got ${decision.action}`);
   assert(decision.mood === 'whispering', 'Expected whispering mood');
   assert(decision.dialogue_topic === 'secret', 'Expected secret topic');
-  assert(campaign.npcs_state.librarian.secrets_revealed.includes('仪式'), 'Expected secret tracked');
+  assert(
+    campaign.npcs_state.librarian.secrets_revealed.includes('仪式'),
+    'Expected secret tracked',
+  );
 });
 
 test('Player talk with no secret keyword adds topic', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   await engine.decide({ type: 'player_talk', player_input: '给我找本书' });
-  assert(campaign.npcs_state.librarian.known_topics.includes('generic'), 'Expected generic topic added');
+  assert(
+    campaign.npcs_state.librarian.known_topics.includes('generic'),
+    'Expected generic topic added',
+  );
 });
 
 // --- Default Fallback ---
@@ -555,7 +1032,20 @@ test('Default fallback for unknown role returns talk', async () => {
     hp: 10,
   };
   campaign.npcs_state = {
-    unknown_role: { id: 'unknown_role', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    unknown_role: {
+      id: 'unknown_role',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'unknown_role');
   // Force no rule match and no LLM
@@ -568,7 +1058,20 @@ test('Default fallback for unknown role returns talk', async () => {
 test('Default fallback for enemy role returns attack', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    enemy1: { id: 'enemy1', current_hp: 15, current_san: 80, attitude: 'hostile', is_alive: true, trust: 10, fear: 20, suspicion: 50, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    enemy1: {
+      id: 'enemy1',
+      current_hp: 15,
+      current_san: 80,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 10,
+      fear: 20,
+      suspicion: 50,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const mockLLM = { isAvailable: () => false, chat: async () => ({}) };
@@ -580,12 +1083,28 @@ test('Default fallback for enemy role returns attack', async () => {
 test('Default fallback for Boss role returns special_attack', async () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    boss: { id: 'boss', current_hp: 50, current_san: 100, attitude: 'hostile', is_alive: true, trust: 0, fear: 0, suspicion: 80, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    boss: {
+      id: 'boss',
+      current_hp: 50,
+      current_san: 100,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 0,
+      fear: 0,
+      suspicion: 80,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'boss');
   const mockLLM = { isAvailable: () => false, chat: async () => ({}) };
   const decision = await engine.decide({ type: 'unknown_situation' }, mockLLM);
-  assert(decision.action === 'special_attack', `Expected special_attack fallback, got ${decision.action}`);
+  assert(
+    decision.action === 'special_attack',
+    `Expected special_attack fallback, got ${decision.action}`,
+  );
   assert(decision.mood === 'dominant', 'Expected dominant mood');
 });
 
@@ -595,7 +1114,20 @@ console.log('\n--- Build Context ---');
 test('buildContext includes all fields', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    librarian: { id: 'librarian', current_hp: 10, current_san: 50, attitude: 'neutral', is_alive: true, trust: 30, fear: 20, suspicion: 30, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    librarian: {
+      id: 'librarian',
+      current_hp: 10,
+      current_san: 50,
+      attitude: 'neutral',
+      is_alive: true,
+      trust: 30,
+      fear: 20,
+      suspicion: 30,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const context = engine.buildContext({ type: 'test_situation' });
@@ -612,7 +1144,20 @@ test('buildContext includes all fields', () => {
 test('buildContext for enemy includes attack action', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    enemy1: { id: 'enemy1', current_hp: 15, current_san: 80, attitude: 'hostile', is_alive: true, trust: 10, fear: 20, suspicion: 50, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    enemy1: {
+      id: 'enemy1',
+      current_hp: 15,
+      current_san: 80,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 10,
+      fear: 20,
+      suspicion: 50,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const context = engine.buildContext('combat');
@@ -623,7 +1168,20 @@ test('buildContext for enemy includes attack action', () => {
 test('buildContext for Boss includes special actions', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    boss: { id: 'boss', current_hp: 50, current_san: 100, attitude: 'hostile', is_alive: true, trust: 0, fear: 0, suspicion: 80, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    boss: {
+      id: 'boss',
+      current_hp: 50,
+      current_san: 100,
+      attitude: 'hostile',
+      is_alive: true,
+      trust: 0,
+      fear: 0,
+      suspicion: 80,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'boss');
   const context = engine.buildContext('combat');
@@ -635,7 +1193,20 @@ test('buildContext for Boss includes special actions', () => {
 test('buildContext for ally includes help action', () => {
   const campaign = buildCampaign();
   campaign.npcs_state = {
-    ally: { id: 'ally', current_hp: 8, current_san: 55, attitude: 'friendly', is_alive: true, trust: 70, fear: 10, suspicion: 10, known_topics: [], secrets_revealed: [], turns_in_scene: 0, custom_vars: {} },
+    ally: {
+      id: 'ally',
+      current_hp: 8,
+      current_san: 55,
+      attitude: 'friendly',
+      is_alive: true,
+      trust: 70,
+      fear: 10,
+      suspicion: 10,
+      known_topics: [],
+      secrets_revealed: [],
+      turns_in_scene: 0,
+      custom_vars: {},
+    },
   };
   const engine = new NPCDecisionEngine(campaign, 'ally');
   const context = engine.buildContext('combat');

@@ -48,8 +48,18 @@ const baseModule = {
     },
   },
   npcs: {
-    npc1: { id: 'npc1', name: '老图书管理员', description: '一位佝偻的老人', personality: '谨慎、多疑' },
-    npc2: { id: 'npc2', name: '邪教信徒', description: '眼神狂热的年轻人', personality: '狂热、攻击性' },
+    npc1: {
+      id: 'npc1',
+      name: '老图书管理员',
+      description: '一位佝偻的老人',
+      personality: '谨慎、多疑',
+    },
+    npc2: {
+      id: 'npc2',
+      name: '邪教信徒',
+      description: '眼神狂热的年轻人',
+      personality: '狂热、攻击性',
+    },
   },
 };
 
@@ -145,7 +155,10 @@ test('GM prompt throws or handles missing module', () => {
     // If it doesn't throw, it should at least not crash
     assert(true, 'did not crash');
   } catch (e) {
-    assert(e.message.includes('Cannot') || e.message.includes('null'), 'expected error about null module');
+    assert(
+      e.message.includes('Cannot') || e.message.includes('null'),
+      'expected error about null module',
+    );
   }
 });
 
@@ -171,7 +184,10 @@ test('NPC dialogue prompt includes known secrets', () => {
 test('NPC dialogue prompt for NPC with no secrets', () => {
   const pb = new PromptBuilder(baseCampaign);
   const prompt = pb.buildNPCDialoguePrompt('npc2', '上下文', '愤怒');
-  assert(prompt.content.includes('none') || prompt.content.includes(''), 'should handle no secrets');
+  assert(
+    prompt.content.includes('none') || prompt.content.includes(''),
+    'should handle no secrets',
+  );
 });
 
 test('NPC dialogue prompt returns null for missing NPC', () => {
@@ -183,7 +199,10 @@ test('NPC dialogue prompt returns null for missing NPC', () => {
 test('NPC dialogue prompt with null mood defaults gracefully', () => {
   const pb = new PromptBuilder(baseCampaign);
   const prompt = pb.buildNPCDialoguePrompt('npc1', '上下文', null);
-  assert(prompt.content.includes('null') || prompt.content.includes(''), 'should include null or empty mood');
+  assert(
+    prompt.content.includes('null') || prompt.content.includes(''),
+    'should include null or empty mood',
+  );
 });
 
 test('NPC dialogue prompt with empty context summary', () => {
@@ -206,7 +225,10 @@ test('Scene description prompt includes scene details', () => {
 test('Scene description prompt with null transition', () => {
   const pb = new PromptBuilder(baseCampaign);
   const prompt = pb.buildSceneDescriptionPrompt('s1', null);
-  assert(prompt.content.includes('null') || prompt.content.includes('The player enters'), 'should handle null transition');
+  assert(
+    prompt.content.includes('null') || prompt.content.includes('The player enters'),
+    'should handle null transition',
+  );
 });
 
 test('Scene description prompt for missing scene returns graceful fallback', () => {
@@ -283,7 +305,10 @@ test('GM prompt handles missing player object', () => {
     // If it doesn't crash, at least verify it returns something
     assert(prompt.role === 'system', 'should return system prompt');
   } catch (e) {
-    assert(e.message.includes('null') || e.message.includes('Cannot read'), 'expected error for null player');
+    assert(
+      e.message.includes('null') || e.message.includes('Cannot read'),
+      'expected error for null player',
+    );
   }
 });
 
@@ -297,7 +322,10 @@ test('GM prompt handles missing scenes in module', () => {
     const prompt = pb.buildGMContextPrompt();
     assert(prompt.role === 'system', 'should return system prompt');
   } catch (e) {
-    assert(e.message.includes('undefined') || e.message.includes('Cannot read'), 'expected error for missing scene');
+    assert(
+      e.message.includes('undefined') || e.message.includes('Cannot read'),
+      'expected error for missing scene',
+    );
   }
 });
 
@@ -310,7 +338,10 @@ test('NPC prompt handles missing npcs_state', () => {
     assert(prompt !== null, 'should return prompt');
   } catch (e) {
     // Expected: accessing undefined.npc1 throws
-    assert(e.message.includes('undefined') || e.message.includes('Cannot read'), 'expected error for undefined npcs_state');
+    assert(
+      e.message.includes('undefined') || e.message.includes('Cannot read'),
+      'expected error for undefined npcs_state',
+    );
   }
 });
 
@@ -405,7 +436,10 @@ test('GM prompt handles player stats with zero values', () => {
   const pb = new PromptBuilder(campaign);
   const prompt = pb.buildGMContextPrompt();
   // Note: `0 || '?'` in JS returns '?' so HP 0 shows as '?/?'
-  assert(prompt.content.includes('HP') && prompt.content.includes('SAN'), 'should mention HP and SAN');
+  assert(
+    prompt.content.includes('HP') && prompt.content.includes('SAN'),
+    'should mention HP and SAN',
+  );
   assert(prompt.content.includes('测试员'), 'should show player name');
 });
 

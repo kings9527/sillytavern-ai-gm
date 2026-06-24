@@ -92,10 +92,14 @@ class MockGameController {
 class MockLLMClient {
   constructor(opts = {}) {
     this._available = opts.available !== false;
-    this._response = opts.response || '{"action":"talk","confidence":0.8,"reasoning":"回应玩家","mood":"neutral","target_id":"player_1"}';
+    this._response =
+      opts.response ||
+      '{"action":"talk","confidence":0.8,"reasoning":"回应玩家","mood":"neutral","target_id":"player_1"}';
     this._calls = [];
   }
-  isAvailable() { return this._available; }
+  isAvailable() {
+    return this._available;
+  }
   async chat(messages) {
     this._calls.push({ messages });
     return { content: this._response };
@@ -103,7 +107,9 @@ class MockLLMClient {
   async sendMessages(messages) {
     return this.chat(messages);
   }
-  getCalls() { return this._calls; }
+  getCalls() {
+    return this._calls;
+  }
 }
 
 /* ---------- Test harness ---------- */
@@ -171,7 +177,7 @@ test('getRecentContext returns formatted chat history', () => {
 
 test('getRecentContext respects limit', () => {
   const limited = bridge.getRecentContext(2);
-  const lines = limited.split('\n').filter(l => l.trim());
+  const lines = limited.split('\n').filter((l) => l.trim());
   assertEqual(lines.length, 2, 'Should return exactly 2 messages');
 });
 
@@ -220,23 +226,23 @@ async function testNpcDecisionPrompt() {
   const campaign = structuredClone(testCampaign);
   const engine = new NPCDecisionEngine(campaign, 'stranger');
   const mockLLM = new MockLLMClient({
-    response: '{"action":"talk","confidence":0.85,"reasoning":"玩家表现友好","mood":"friendly","target_id":"player_1"}',
+    response:
+      '{"action":"talk","confidence":0.85,"reasoning":"玩家表现友好","mood":"friendly","target_id":"player_1"}',
   });
 
   const chatHistory = '玩家: 你在这里做什么？\nAI: 这不关你的事。';
 
-  await engine.decide(
-    { type: 'player_talk', player_input: '我想和你聊聊' },
-    mockLLM,
-    chatHistory,
-  );
+  await engine.decide({ type: 'player_talk', player_input: '我想和你聊聊' }, mockLLM, chatHistory);
 
   testAsync('NPCDecision LLM prompt includes chat history', async () => {
     const calls = mockLLM.getCalls();
     assert(calls.length > 0, 'LLM should have been called');
-    const userMsg = calls[0].messages.find(m => m.role === 'user');
+    const userMsg = calls[0].messages.find((m) => m.role === 'user');
     assert(userMsg, 'User message should exist');
-    assert(userMsg.content.includes('Recent conversation'), 'Prompt should contain "Recent conversation" header');
+    assert(
+      userMsg.content.includes('Recent conversation'),
+      'Prompt should contain "Recent conversation" header',
+    );
     assert(userMsg.content.includes('你在这里做什么'), 'Prompt should include actual chat content');
   });
 }
@@ -307,7 +313,7 @@ async function testCacheTruncation() {
   const hist = br.getRecentContext(10);
 
   testAsync('Cache respects maxContextMessages limit', async () => {
-    const lines = hist.split('\n').filter(l => l.trim());
+    const lines = hist.split('\n').filter((l) => l.trim());
     assertEqual(lines.length, 3, 'Should only retain 3 messages');
     assert(!hist.includes('第一条'), 'Oldest message should be evicted');
     assert(hist.includes('第三条'), 'Newest message should remain');

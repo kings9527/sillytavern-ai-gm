@@ -14,7 +14,7 @@ const mockEventSource = {
     this.events[event].push(handler);
   },
   emit(event, ...args) {
-    (this.events[event] || []).forEach(h => h(...args));
+    (this.events[event] || []).forEach((h) => h(...args));
   },
 };
 
@@ -33,13 +33,16 @@ const mockContext = {
   ],
 };
 
-function getContext() { return mockContext; }
+function getContext() {
+  return mockContext;
+}
 
 const extensionSettings = {};
-function saveSettingsDebounced() { }
+function saveSettingsDebounced() {}
 
 // ===== 设置 JSDOM =====
-const dom = new JSDOM(`
+const dom = new JSDOM(
+  `
 <!DOCTYPE html>
 <html>
 <head></head>
@@ -48,7 +51,9 @@ const dom = new JSDOM(`
   <div id="extensions_settings"></div>
 </body>
 </html>
-`, { runScripts: 'dangerously', url: 'http://localhost' });
+`,
+  { runScripts: 'dangerously', url: 'http://localhost' },
+);
 
 global.document = dom.window.document;
 global.window = dom.window;
@@ -95,7 +100,11 @@ console.log('✅ GameController initialized correctly');
 // 测试销毁
 ctrl.destroy();
 const destroyedStatus = ctrl.getStatus();
-assert.strictEqual(destroyedStatus.isRunning, false, 'Controller should not be running after destroy');
+assert.strictEqual(
+  destroyedStatus.isRunning,
+  false,
+  'Controller should not be running after destroy',
+);
 assert.strictEqual(destroyedStatus.campaign, '', 'Campaign should be cleared after destroy');
 console.log('✅ GameController destroyed correctly');
 
@@ -106,7 +115,8 @@ let capturedAction = null;
 ctrl.initGameController('/api/ai-gm', 'event-test');
 
 // 模拟后端 POST 被拦截
-const originalFetch = global.fetch || (() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }));
+const originalFetch =
+  global.fetch || (() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }));
 const fetchCalls = [];
 
 // 模拟 NPC 动作事件
@@ -118,10 +128,16 @@ document.addEventListener('ai-gm:npc-action', (e) => {
   capturedAction = { type: actionType, target: npcId };
 });
 
-document.dispatchEvent(new CustomEvent('ai-gm:npc-action', {
-  detail: { npcId: 'npc-1', action: 'talk' },
-}));
-assert.deepStrictEqual(capturedAction, { type: 'npc_talk', target: 'npc-1' }, 'NPC talk action should be bridged');
+document.dispatchEvent(
+  new CustomEvent('ai-gm:npc-action', {
+    detail: { npcId: 'npc-1', action: 'talk' },
+  }),
+);
+assert.deepStrictEqual(
+  capturedAction,
+  { type: 'npc_talk', target: 'npc-1' },
+  'NPC talk action should be bridged',
+);
 console.log('✅ NPC action bridge works');
 
 // 模拟场景交互事件
@@ -131,10 +147,16 @@ document.addEventListener('ai-gm:scene-interact', (e) => {
   if (item) capturedAction = { type: 'interact', target: item };
 });
 
-document.dispatchEvent(new CustomEvent('ai-gm:scene-interact', {
-  detail: { item: '古老日记' },
-}));
-assert.deepStrictEqual(capturedAction, { type: 'interact', target: '古老日记' }, 'Scene interact action should be bridged');
+document.dispatchEvent(
+  new CustomEvent('ai-gm:scene-interact', {
+    detail: { item: '古老日记' },
+  }),
+);
+assert.deepStrictEqual(
+  capturedAction,
+  { type: 'interact', target: '古老日记' },
+  'Scene interact action should be bridged',
+);
 console.log('✅ Scene interact bridge works');
 
 // 测试用户消息命令解析
@@ -151,10 +173,16 @@ document.addEventListener('ai-gm:user-message', (e) => {
   }
 });
 
-document.dispatchEvent(new CustomEvent('ai-gm:user-message', {
-  detail: { message: { mes: '/gm move north' }, messageId: 2, source: 'user' },
-}));
-assert.deepStrictEqual(commandAction, { type: 'command', command: 'move north' }, 'User /gm command should be parsed');
+document.dispatchEvent(
+  new CustomEvent('ai-gm:user-message', {
+    detail: { message: { mes: '/gm move north' }, messageId: 2, source: 'user' },
+  }),
+);
+assert.deepStrictEqual(
+  commandAction,
+  { type: 'command', command: 'move north' },
+  'User /gm command should be parsed',
+);
 console.log('✅ User command bridge works');
 
 // 测试 AI 消息中的 JSON 状态同步
@@ -175,14 +203,20 @@ document.addEventListener('ai-gm:ai-message', (e) => {
   }
 });
 
-document.dispatchEvent(new CustomEvent('ai-gm:ai-message', {
-  detail: {
-    message: { mes: '场景更新\n```json\n{"aiGmState":{"title":"新场景","npcs":[]}}\n```' },
-    messageId: 3,
-    source: 'character',
-  },
-}));
-assert.deepStrictEqual(syncedState, { title: '新场景', npcs: [] }, 'AI message JSON state should be extracted');
+document.dispatchEvent(
+  new CustomEvent('ai-gm:ai-message', {
+    detail: {
+      message: { mes: '场景更新\n```json\n{"aiGmState":{"title":"新场景","npcs":[]}}\n```' },
+      messageId: 3,
+      source: 'character',
+    },
+  }),
+);
+assert.deepStrictEqual(
+  syncedState,
+  { title: '新场景', npcs: [] },
+  'AI message JSON state should be extracted',
+);
 console.log('✅ AI message state sync works');
 
 // 清理

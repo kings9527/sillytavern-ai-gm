@@ -189,17 +189,26 @@ export class ModuleParser {
     while (i < lines.length) {
       const line = lines[i];
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) { i++; continue; }
+      if (!trimmed || trimmed.startsWith('#')) {
+        i++;
+        continue;
+      }
 
       const match = trimmed.match(/^([\w-]+):\s*(.*)$/);
-      if (!match) { i++; continue; }
+      if (!match) {
+        i++;
+        continue;
+      }
 
       const [, key, rawValue] = match;
       const value = rawValue.trim();
 
       // Inline array: key: [a, b, c]
       if (value.startsWith('[') && value.endsWith(']')) {
-        result[key] = value.slice(1, -1).split(',').map((s) => s.trim().replace(/^["']|["']$/g, ''));
+        result[key] = value
+          .slice(1, -1)
+          .split(',')
+          .map((s) => s.trim().replace(/^["']|["']$/g, ''));
         i++;
         continue;
       }
@@ -208,14 +217,16 @@ export class ModuleParser {
       if (value === '|' || value === '>') {
         i++;
         const ml = [];
-        const baseIndent = (i < lines.length) ? (lines[i].length - lines[i].trimStart().length) : 0;
+        const baseIndent = i < lines.length ? lines[i].length - lines[i].trimStart().length : 0;
         while (i < lines.length) {
           const l = lines[i];
           if (!l.trim()) {
             if (i + 1 < lines.length) {
               const next = lines[i + 1];
               if (next.trim() && next.length - next.trimStart().length <= baseIndent) break;
-            } else { break; }
+            } else {
+              break;
+            }
             ml.push('');
             i++;
             continue;
@@ -231,7 +242,11 @@ export class ModuleParser {
 
       // Block value: check next line for array or nested object
       if (value === '') {
-        if (i + 1 >= lines.length) { result[key] = ''; i++; continue; }
+        if (i + 1 >= lines.length) {
+          result[key] = '';
+          i++;
+          continue;
+        }
         const nextLine = lines[i + 1];
         const nextTrim = nextLine.trim();
         const nextIndent = nextLine.length - nextLine.trimStart().length;
@@ -244,18 +259,28 @@ export class ModuleParser {
           while (i < lines.length) {
             const arrLine = lines[i];
             const arrTrim = arrLine.trim();
-            if (!arrTrim) { i++; continue; }
+            if (!arrTrim) {
+              i++;
+              continue;
+            }
             const arrIndent = arrLine.length - arrLine.trimStart().length;
             if (arrIndent <= currentIndent || !arrTrim.startsWith('-')) break;
 
             const itemContent = arrTrim.substring(1).trim();
             // Nested object array item
-            if (itemContent.includes(':') && !itemContent.startsWith('"') && !itemContent.startsWith("'")) {
+            if (
+              itemContent.includes(':') &&
+              !itemContent.startsWith('"') &&
+              !itemContent.startsWith("'")
+            ) {
               const childLines = [itemContent];
               i++;
               while (i < lines.length) {
                 const sub = lines[i];
-                if (!sub.trim()) { i++; continue; }
+                if (!sub.trim()) {
+                  i++;
+                  continue;
+                }
                 const subIndent = sub.length - sub.trimStart().length;
                 if (subIndent > arrIndent) {
                   childLines.push(sub.trim());
@@ -278,7 +303,10 @@ export class ModuleParser {
           const childLines = [];
           while (i < lines.length) {
             const sub = lines[i];
-            if (!sub.trim()) { i++; continue; }
+            if (!sub.trim()) {
+              i++;
+              continue;
+            }
             const subIndent = sub.length - sub.trimStart().length;
             if (subIndent <= currentIndent) break;
             childLines.push(sub.trim());
@@ -324,7 +352,8 @@ export class ModuleParser {
     const scenes = {};
 
     // Pattern 1: # Scene: Name or # 场景: Name
-    const sceneRegex = /#\s*(?:场景|Scene)\s*[：:\s]\s*(.+?)\n[\s\S]*?(?=(?=\n#\s*(?:场景|Scene))|$)/gi;
+    const sceneRegex =
+      /#\s*(?:场景|Scene)\s*[：:\s]\s*(.+?)\n[\s\S]*?(?=(?=\n#\s*(?:场景|Scene))|$)/gi;
 
     // Pattern 2: ## Name with **id**: id
     const altSceneRegex = /##\s+(.+?)\n\s*\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?=\n##\s+)|$)/g;
@@ -335,7 +364,8 @@ export class ModuleParser {
     while ((match = sceneRegex.exec(body)) !== null) {
       const sceneContent = match[0];
       const sceneName = match[1].trim();
-      const sceneId = this.extractSceneId(sceneContent) || sceneName.toLowerCase().replace(/\s+/g, '-');
+      const sceneId =
+        this.extractSceneId(sceneContent) || sceneName.toLowerCase().replace(/\s+/g, '-');
 
       scenes[sceneId] = this.parseSceneBlock(sceneContent, sceneId, sceneName);
     }
@@ -355,7 +385,10 @@ export class ModuleParser {
     if (Object.keys(scenes).length === 0) {
       const simpleRegex = /##\s+(.+?)\n\n([\s\S]*?)(?=\n##\s+|$)/g;
       while ((match = simpleRegex.exec(body)) !== null) {
-        const id = match[1].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const id = match[1]
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
         scenes[id] = {
           id,
           title: match[1].trim(),
@@ -430,7 +463,8 @@ export class ModuleParser {
    */
   extractClues(content) {
     const clues = [];
-    const clueRegex = /(?:###|####)\s*(?:线索|Clue)\s*[：:\s]*(.+?)\n[\s\S]*?\*\*(?:发现|发现方式|discover)\*\*[:\s]*(.+?)\n[\s\S]*?\*\*(?:内容|content)\*\*[:\s]*([\s\S]*?)(?=\n(?:###|####)|\n##\s|$)/gi;
+    const clueRegex =
+      /(?:###|####)\s*(?:线索|Clue)\s*[：:\s]*(.+?)\n[\s\S]*?\*\*(?:发现|发现方式|discover)\*\*[:\s]*(.+?)\n[\s\S]*?\*\*(?:内容|content)\*\*[:\s]*([\s\S]*?)(?=\n(?:###|####)|\n##\s|$)/gi;
     let match;
     while ((match = clueRegex.exec(content)) !== null) {
       clues.push({
@@ -459,7 +493,8 @@ export class ModuleParser {
     if (sectionMatch) {
       const npcSection = sectionMatch[1];
       // Each NPC is a ### or ## heading
-      const npcRegex = /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
+      const npcRegex =
+        /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
       let match;
       while ((match = npcRegex.exec(npcSection)) !== null) {
         const npcName = match[1].trim();
@@ -515,13 +550,13 @@ export class ModuleParser {
     }
 
     // Personality
-    const personalityMatch = content.match(
-      /\*\*(?:personality|性格|个性)\*\*[:\s]*([^\n]+)/i,
-    );
+    const personalityMatch = content.match(/\*\*(?:personality|性格|个性)\*\*[:\s]*([^\n]+)/i);
     if (personalityMatch) npc.personality = personalityMatch[1].trim();
 
     // Secrets
-    const secretsMatch = content.match(/\*\*(?:secrets|秘密|secrets)\*\*[:\s]*\n?([\s\S]*?)(?=\n\*\*|\n##|$)/i);
+    const secretsMatch = content.match(
+      /\*\*(?:secrets|秘密|secrets)\*\*[:\s]*\n?([\s\S]*?)(?=\n\*\*|\n##|$)/i,
+    );
     if (secretsMatch) {
       npc.secrets = secretsMatch[1]
         .split('\n')
@@ -617,7 +652,8 @@ export class ModuleParser {
 
     if (sectionMatch) {
       const itemSection = sectionMatch[1];
-      const itemRegex = /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
+      const itemRegex =
+        /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
       let match;
       while ((match = itemRegex.exec(itemSection)) !== null) {
         const itemName = match[1].trim();
@@ -698,12 +734,14 @@ export class ModuleParser {
   extractEndings(body) {
     const endings = {};
 
-    const endingSectionRegex = /#\s*(?:结局|Endings|Ending\s*定义)\s*\n([\s\S]*?)(?=\n#\s*(?!##)|$)/i;
+    const endingSectionRegex =
+      /#\s*(?:结局|Endings|Ending\s*定义)\s*\n([\s\S]*?)(?=\n#\s*(?!##)|$)/i;
     const sectionMatch = body.match(endingSectionRegex);
 
     if (sectionMatch) {
       const endingSection = sectionMatch[1];
-      const endingRegex = /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
+      const endingRegex =
+        /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
       let match;
       while ((match = endingRegex.exec(endingSection)) !== null) {
         const endingName = match[1].trim();
@@ -752,7 +790,8 @@ export class ModuleParser {
         const clueMatch = text.match(/(?:clue|线索)[:\s]*(.+)/i);
         if (clueMatch) return { type: 'clue', clue: clueMatch[1].trim() };
         const combatMatch = text.match(/(?:combat|战斗)[:\s]*(.+)/i);
-        if (combatMatch) return { type: 'combat', enemy: combatMatch[1].trim(), status: 'defeated' };
+        if (combatMatch)
+          return { type: 'combat', enemy: combatMatch[1].trim(), status: 'defeated' };
         const flagMatch = text.match(/(?:flag|标记)[:\s]*(.+)/i);
         if (flagMatch) return { type: 'flag', key: flagMatch[1].trim() };
         return { type: 'custom', text };
@@ -778,12 +817,14 @@ export class ModuleParser {
   extractGlobalEvents(body) {
     const events = [];
 
-    const eventSectionRegex = /#\s*(?:全局事件|Global\s*Events|Event\s*定义)\s*\n([\s\S]*?)(?=\n#\s*(?!##)|$)/i;
+    const eventSectionRegex =
+      /#\s*(?:全局事件|Global\s*Events|Event\s*定义)\s*\n([\s\S]*?)(?=\n#\s*(?!##)|$)/i;
     const sectionMatch = body.match(eventSectionRegex);
 
     if (sectionMatch) {
       const eventSection = sectionMatch[1];
-      const eventRegex = /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
+      const eventRegex =
+        /(?:###|##)\s+(.+?)\n[\s\S]*?\*\*id\*\*[:\s]*([^\n]+)\n[\s\S]*?(?=(?:###|##)\s+|$)/g;
       let match;
       while ((match = eventRegex.exec(eventSection)) !== null) {
         const eventName = match[1].trim();
@@ -826,7 +867,13 @@ export class ModuleParser {
       const triggerText = triggerMatch[1].trim();
       const skillMatch = triggerText.match(/(?:skill|技能)[:\s]*(.+)/i);
       if (skillMatch) {
-        event.trigger = { type: 'skill', skill: skillMatch[1].trim().split(/[,，]/).map((s) => s.trim()) };
+        event.trigger = {
+          type: 'skill',
+          skill: skillMatch[1]
+            .trim()
+            .split(/[,，]/)
+            .map((s) => s.trim()),
+        };
       }
       const actionMatch = triggerText.match(/(?:action|动作)[:\s]*(.+)/i);
       if (actionMatch) {
@@ -920,7 +967,9 @@ export class ModuleParser {
    */
   extractItemRefs(content) {
     const items = [];
-    const itemMatch = content.match(/##?\s*(?:物品|Items|Interactables|可交互)\s*\n([\s\S]*?)(?=\n##?\s|$)/i);
+    const itemMatch = content.match(
+      /##?\s*(?:物品|Items|Interactables|可交互)\s*\n([\s\S]*?)(?=\n##?\s|$)/i,
+    );
     if (itemMatch) {
       const lines = itemMatch[1].split('\n').map((s) => s.trim());
       for (const line of lines) {
@@ -961,7 +1010,9 @@ export class ModuleParser {
       if (scene.combat?.enabled) {
         for (const enemyId of scene.combat.enemies || []) {
           if (!module.npcs[enemyId]) {
-            this.warnings.push(`Scene '${sceneId}' combat references undefined enemy: '${enemyId}'`);
+            this.warnings.push(
+              `Scene '${sceneId}' combat references undefined enemy: '${enemyId}'`,
+            );
           }
         }
       }
@@ -969,7 +1020,9 @@ export class ModuleParser {
       if (scene.exits) {
         for (const exit of scene.exits) {
           if (exit.target && !module.scenes[exit.target] && !exit.target.startsWith('http')) {
-            this.warnings.push(`Scene '${sceneId}' exit references undefined scene: '${exit.target}'`);
+            this.warnings.push(
+              `Scene '${sceneId}' exit references undefined scene: '${exit.target}'`,
+            );
           }
         }
       }
@@ -1015,10 +1068,14 @@ export class ModuleParser {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed.startsWith('-')) continue;
-        const match = trimmed.match(/^-\s*\[(.+?)\]\((.+?)\)(?:\s*[-—]\s*(?:需要|条件|condition)?[:：]?\s*(.+))?$/);
+        const match = trimmed.match(
+          /^-\s*\[(.+?)\]\((.+?)\)(?:\s*[-—]\s*(?:需要|条件|condition)?[:：]?\s*(.+))?$/,
+        );
         if (match) {
           const conditionText = match[3] ? match[3].trim() : null;
-          const skip = conditionText && /^(无|无条件|none|不需要|不需要条件|no.?condition|always|任何)$/i.test(conditionText);
+          const skip =
+            conditionText &&
+            /^(无|无条件|none|不需要|不需要条件|no.?condition|always|任何)$/i.test(conditionText);
           const condition = conditionText && !skip ? this.parseCondition(conditionText) : null;
           exits.push({
             target: match[2].trim(),
@@ -1299,7 +1356,8 @@ export class ModuleParser {
    */
   extractSkillChecks(content) {
     const checks = [];
-    const checkRegex = /(?:###|####)\s*(?:检定点|Check|Skill Check)\s*[：:\s]*(.+?)\n[\s\S]*?(?=(?:###|####|\n##\s|$))/gi;
+    const checkRegex =
+      /(?:###|####)\s*(?:检定点|Check|Skill Check)\s*[：:\s]*(.+?)\n[\s\S]*?(?=(?:###|####|\n##\s|$))/gi;
     let match;
     while ((match = checkRegex.exec(content)) !== null) {
       checks.push(this.parseSkillCheckBlock(match[0], match[1].trim()));
@@ -1350,13 +1408,17 @@ export class ModuleParser {
     }
 
     // Success outcome
-    const successMatch = content.match(/\*\*(?:成功|success)\*\*\s*[：:\s]*\n?([\s\S]*?)(?=\n\*\*|\n(?:###|####)|\n##\s|$)/i);
+    const successMatch = content.match(
+      /\*\*(?:成功|success)\*\*\s*[：:\s]*\n?([\s\S]*?)(?=\n\*\*|\n(?:###|####)|\n##\s|$)/i,
+    );
     if (successMatch) {
       check.success = this.parseCheckOutcome(successMatch[1].trim());
     }
 
     // Failure outcome
-    const failureMatch = content.match(/\*\*(?:失败|failure)\*\*\s*[：:\s]*\n?([\s\S]*?)(?=\n\*\*|\n(?:###|####)|\n##\s|$)/i);
+    const failureMatch = content.match(
+      /\*\*(?:失败|failure)\*\*\s*[：:\s]*\n?([\s\S]*?)(?=\n\*\*|\n(?:###|####)|\n##\s|$)/i,
+    );
     if (failureMatch) {
       check.failure = this.parseCheckOutcome(failureMatch[1].trim());
     }
@@ -1391,7 +1453,8 @@ export class ModuleParser {
     if (sanityMatch) outcome.effects.push({ type: 'sanity_loss', amount: sanityMatch[1].trim() });
 
     const flagMatch = text.match(/(?:设置标记|set flag|flag)[:\s]*(.+?)(?:[,，\n]|$)/i);
-    if (flagMatch) outcome.effects.push({ type: 'set_flag', key: flagMatch[1].trim(), value: true });
+    if (flagMatch)
+      outcome.effects.push({ type: 'set_flag', key: flagMatch[1].trim(), value: true });
 
     return outcome;
   }
@@ -1425,8 +1488,9 @@ export class ModuleParser {
     }
 
     // Skill check: 图书馆使用 50, skill_check(图书馆使用, 50)
-    const skillMatch = text.match(/^(?:skill_check|技能检定|检定)?[:\s]*(.+?)\s+(\d+)$/i)
-      || text.match(/(?:skill_check)\s*\(\s*(.+?)\s*,\s*(\d+)\s*\)/i);
+    const skillMatch =
+      text.match(/^(?:skill_check|技能检定|检定)?[:\s]*(.+?)\s+(\d+)$/i) ||
+      text.match(/(?:skill_check)\s*\(\s*(.+?)\s*,\s*(\d+)\s*\)/i);
     if (skillMatch) {
       return {
         type: 'skill_check',

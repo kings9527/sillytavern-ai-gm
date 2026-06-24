@@ -515,9 +515,7 @@ export class LLMClient {
    */
   _cacheKey(messages, options) {
     // Simple hash: provider + model + first 200 chars of messages
-    const msgStr = messages
-      .map((m) => `${m.role}:${m.content.substring(0, 100)}`)
-      .join('|');
+    const msgStr = messages.map((m) => `${m.role}:${m.content.substring(0, 100)}`).join('|');
     return `${options.provider}:${options.model}:${msgStr}`;
   }
 

@@ -12,9 +12,18 @@ function assert(condition, message) {
 function testInfoExport() {
   assert(typeof info === 'object', 'info must be an object');
   assert(info.id === 'ai-gm', `info.id must be 'ai-gm', got ${info.id}`);
-  assert(typeof info.name === 'string' && info.name.length > 0, 'info.name must be non-empty string');
-  assert(typeof info.description === 'string' && info.description.length > 0, 'info.description must be non-empty string');
-  assert(/^[a-z0-9_-]+$/.test(info.id), 'info.id must be valid plugin ID (lowercase alphanumeric, hyphens, underscores)');
+  assert(
+    typeof info.name === 'string' && info.name.length > 0,
+    'info.name must be non-empty string',
+  );
+  assert(
+    typeof info.description === 'string' && info.description.length > 0,
+    'info.description must be non-empty string',
+  );
+  assert(
+    /^[a-z0-9_-]+$/.test(info.id),
+    'info.id must be valid plugin ID (lowercase alphanumeric, hyphens, underscores)',
+  );
   console.log('✅ testInfoExport passed');
 }
 
@@ -25,7 +34,10 @@ function testInitExport() {
 }
 
 function testRouterExport() {
-  assert(typeof router === 'function' || typeof router === 'object', 'router must be a function or object');
+  assert(
+    typeof router === 'function' || typeof router === 'object',
+    'router must be a function or object',
+  );
   assert(typeof router.get === 'function', 'router.get must be a function');
   assert(typeof router.post === 'function', 'router.post must be a function');
   console.log('✅ testRouterExport passed');
@@ -41,7 +53,9 @@ function testInitMountsRoutes() {
   // Simulate a mock router
   const calls = [];
   const mockRouter = {
-    use: (...args) => { calls.push({ method: 'use', args }); },
+    use: (...args) => {
+      calls.push({ method: 'use', args });
+    },
   };
   init(mockRouter);
   assert(calls.length >= 2, 'init must register at least 2 middlewares (router + errorHandler)');

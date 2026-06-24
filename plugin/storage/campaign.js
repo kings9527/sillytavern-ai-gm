@@ -41,7 +41,10 @@ export class CampaignStorage {
         this.sqliteEnabled = true;
         console.log('[CampaignStorage] SQLite initialized at', this.dbPath);
       } catch (error) {
-        console.warn('[CampaignStorage] SQLite init failed, falling back to memory:', error.message);
+        console.warn(
+          '[CampaignStorage] SQLite init failed, falling back to memory:',
+          error.message,
+        );
         this.sqliteEnabled = false;
       }
     }
@@ -185,7 +188,15 @@ export class CampaignStorage {
              turn_count=excluded.turn_count,
              data=excluded.data`,
         );
-        stmt.run(campaignId, slot, label, saveData.saved_at, saveData.scene_id, saveData.turn_count, JSON.stringify(saveData));
+        stmt.run(
+          campaignId,
+          slot,
+          label,
+          saveData.saved_at,
+          saveData.scene_id,
+          saveData.turn_count,
+          JSON.stringify(saveData),
+        );
         return {
           success: true,
           slot,
@@ -226,9 +237,7 @@ export class CampaignStorage {
   loadSnapshot(campaignId, slot = 1) {
     if (this.sqliteEnabled) {
       try {
-        const stmt = this.db.prepare(
-          'SELECT data FROM saves WHERE campaign_id = ? AND slot = ?',
-        );
+        const stmt = this.db.prepare('SELECT data FROM saves WHERE campaign_id = ? AND slot = ?');
         const row = stmt.get(campaignId, slot);
         if (row?.data) {
           return JSON.parse(row.data);
@@ -399,7 +408,9 @@ export class CampaignStorage {
         const logRow = logStmt.get(campaignId);
         logs = { length: logRow?.count || 0 };
 
-        const saveStmt = this.db.prepare('SELECT COUNT(*) as count FROM saves WHERE campaign_id = ?');
+        const saveStmt = this.db.prepare(
+          'SELECT COUNT(*) as count FROM saves WHERE campaign_id = ?',
+        );
         const saveRow = saveStmt.get(campaignId);
         saveCount = saveRow?.count || 0;
       } catch (error) {
@@ -480,7 +491,10 @@ export class CampaignStorage {
       sqliteEnabled: this.sqliteEnabled,
       dbPath: this.dbPath,
       memoryCampaigns: this.memorySaves.size,
-      memoryLogEntries: Array.from(this.memoryLogs.values()).reduce((sum, logs) => sum + logs.length, 0),
+      memoryLogEntries: Array.from(this.memoryLogs.values()).reduce(
+        (sum, logs) => sum + logs.length,
+        0,
+      ),
     };
   }
 

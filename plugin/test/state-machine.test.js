@@ -13,7 +13,10 @@ let passCount = 0;
 let failCount = 0;
 
 function assertEqual(actual, expected, message) {
-  if (actual === expected) { passCount++; return; }
+  if (actual === expected) {
+    passCount++;
+    return;
+  }
   failCount++;
   console.error(`  FAIL: ${message}`);
   console.error(`    Expected: ${expected}`);
@@ -21,21 +24,30 @@ function assertEqual(actual, expected, message) {
 }
 
 function assertTrue(actual, message) {
-  if (actual) { passCount++; return; }
+  if (actual) {
+    passCount++;
+    return;
+  }
   failCount++;
   console.error(`  FAIL: ${message}`);
   console.error(`    Expected truthy, got: ${actual}`);
 }
 
 function assertFalse(actual, message) {
-  if (!actual) { passCount++; return; }
+  if (!actual) {
+    passCount++;
+    return;
+  }
   failCount++;
   console.error(`  FAIL: ${message}`);
   console.error(`    Expected falsy, got: ${actual}`);
 }
 
 function assertIncludes(haystack, needle, message) {
-  if (haystack && haystack.includes(needle)) { passCount++; return; }
+  if (haystack && haystack.includes(needle)) {
+    passCount++;
+    return;
+  }
   failCount++;
   console.error(`  FAIL: ${message}`);
   console.error(`    Expected to include: ${needle}`);
@@ -45,7 +57,10 @@ function assertIncludes(haystack, needle, message) {
 function assertObjectEqual(actual, expected, message) {
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
-  if (a === e) { passCount++; return; }
+  if (a === e) {
+    passCount++;
+    return;
+  }
   failCount++;
   console.error(`  FAIL: ${message}`);
   console.error(`    Expected: ${e}`);
@@ -146,10 +161,25 @@ const NPCS = {
 
 const ITEMS = {
   key: { name: '古老钥匙', description: '一把生锈的钥匙。', readable: false, usable: false },
-  note: { name: '神秘纸条', description: '一张泛黄的纸条。', readable: true, content: '「当月亮正确时，门会打开。」' },
+  note: {
+    name: '神秘纸条',
+    description: '一张泛黄的纸条。',
+    readable: true,
+    content: '「当月亮正确时，门会打开。」',
+  },
   potion: { name: '治疗药水', description: '一瓶红色药水。', usable: true, effects: ['hp + 10'] },
-  bomb: { name: '炸弹', description: '危险的炸弹。', usable: true, effects: [{ type: 'dice_check', skill: 'dodge', skill_value: 40 }] },
-  cursed_book: { name: '诅咒之书', description: '散发着邪恶气息。', readable: true, effects: ['sanity_loss 1d3'] },
+  bomb: {
+    name: '炸弹',
+    description: '危险的炸弹。',
+    usable: true,
+    effects: [{ type: 'dice_check', skill: 'dodge', skill_value: 40 }],
+  },
+  cursed_book: {
+    name: '诅咒之书',
+    description: '散发着邪恶气息。',
+    readable: true,
+    effects: ['sanity_loss 1d3'],
+  },
   stat_item: { name: '属性石', description: '增加力量。', effects: ['strength + 5'] },
 };
 
@@ -482,7 +512,10 @@ async function runTests() {
   console.log('Test 24: Dice check with provided skill data');
   {
     const gsm = new GameStateMachine(createModule(), createCampaign());
-    const result = gsm.handleDiceCheckInteraction({ skill: 'listen', skill_value: 55, modifier: 5 }, '');
+    const result = gsm.handleDiceCheckInteraction(
+      { skill: 'listen', skill_value: 55, modifier: 5 },
+      '',
+    );
     assertEqual(result.skill, 'listen', 'Should use provided skill');
     assertEqual(result.target, 60, 'Should apply modifier (55+5)');
   }
@@ -561,7 +594,10 @@ async function runTests() {
     assertEqual(result.ending.type, 'victory', 'Should be victory ending');
     assertIncludes(result.narration, '胜利', 'Should include victory title');
     assertIncludes(result.narration, '你带着真相活了下来', 'Should include ending description');
-    assertTrue(result.available_actions.some((a) => a.type === 'restart'), 'Should offer restart');
+    assertTrue(
+      result.available_actions.some((a) => a.type === 'restart'),
+      'Should offer restart',
+    );
   }
 
   console.log('Test 32: Defeat ending');
@@ -616,7 +652,10 @@ async function runTests() {
 
   console.log('Test 37: Leaving combat scene clears combat_state');
   {
-    const campaign = createCampaign({ current_scene: 'combat_scene', combat_state: { active: true } });
+    const campaign = createCampaign({
+      current_scene: 'combat_scene',
+      combat_state: { active: true },
+    });
     const gsm = new GameStateMachine(createModule(), campaign);
     gsm.currentScene = SCENES.combat_scene;
     await gsm.transitionTo('hallway');
@@ -635,7 +674,10 @@ async function runTests() {
 
   console.log('Test 39: Boolean check');
   {
-    const gsm = new GameStateMachine(createModule(), createCampaign({ global_vars: { flag: true } }));
+    const gsm = new GameStateMachine(
+      createModule(),
+      createCampaign({ global_vars: { flag: true } }),
+    );
     assertTrue(gsm.evaluateCondition({ flag: true }), 'True should match true');
     assertFalse(gsm.evaluateCondition({ flag: false }), 'True should not match false');
   }
@@ -649,14 +691,20 @@ async function runTests() {
 
   console.log('Test 41: String equality');
   {
-    const gsm = new GameStateMachine(createModule(), createCampaign({ global_vars: { name: 'alice' } }));
+    const gsm = new GameStateMachine(
+      createModule(),
+      createCampaign({ global_vars: { name: 'alice' } }),
+    );
     assertTrue(gsm.evaluateCondition({ name: 'alice' }), 'Exact string should match');
     assertFalse(gsm.evaluateCondition({ name: 'bob' }), 'Different string should fail');
   }
 
   console.log('Test 42: Multiple conditions (all must pass)');
   {
-    const gsm = new GameStateMachine(createModule(), createCampaign({ global_vars: { a: 1, b: true } }));
+    const gsm = new GameStateMachine(
+      createModule(),
+      createCampaign({ global_vars: { a: 1, b: true } }),
+    );
     assertTrue(gsm.evaluateCondition({ a: 1, b: true }), 'All matching should pass');
     assertFalse(gsm.evaluateCondition({ a: 1, b: false }), 'One failing should fail all');
   }
@@ -690,7 +738,10 @@ async function runTests() {
     // Use a cloned scene with conditional exits only (no always)
     const mod = createModule();
     mod.scenes.conditional_exit_scene = cloneScene(SCENES.conditional_exit_scene);
-    const campaign = createCampaign({ current_scene: 'conditional_exit_scene', global_vars: { key_found: true } });
+    const campaign = createCampaign({
+      current_scene: 'conditional_exit_scene',
+      global_vars: { key_found: true },
+    });
     const gsm = new GameStateMachine(mod, campaign);
     gsm.currentScene = mod.scenes.conditional_exit_scene;
     const exit = gsm.findMatchingExit('secret_room');
@@ -706,7 +757,11 @@ async function runTests() {
     gsm.currentScene = mod.scenes.conditional_exit_scene;
     // Query a target that does not match any exit target/label, so condition checks matter
     const exit = gsm.findMatchingExit('nowhere');
-    assertEqual(exit, undefined, 'Should not match when no target/label matches and conditions are unmet');
+    assertEqual(
+      exit,
+      undefined,
+      'Should not match when no target/label matches and conditions are unmet',
+    );
   }
 
   console.log('Test 48: Keyword match in input');
@@ -796,7 +851,10 @@ async function runTests() {
     gsm.parseDiceExpression = () => 5;
     const result = gsm.performSanityCheck({ target: 50, failure: '1d10' });
     assertTrue(result.narration.includes('疯狂'), 'Major loss should mention insanity');
-    assertTrue(campaign.player.status_effects.some((e) => e.type === 'temp_insanity'), 'Should add temp_insanity');
+    assertTrue(
+      campaign.player.status_effects.some((e) => e.type === 'temp_insanity'),
+      'Should add temp_insanity',
+    );
     gsm.parseDiceExpression = origParseDice;
     Math.random = origRandom;
   }
@@ -832,14 +890,22 @@ async function runTests() {
   {
     const gsm = new GameStateMachine(createModule(), createCampaign());
     const result = gsm.parseEffectString('sanity_loss 1d6');
-    assertObjectEqual(result, { target: 'sanity_loss', operation: 'dice', value: '1d6' }, 'Should parse dice effect');
+    assertObjectEqual(
+      result,
+      { target: 'sanity_loss', operation: 'dice', value: '1d6' },
+      'Should parse dice effect',
+    );
   }
 
   console.log('Test 61: parseEffectString handles set');
   {
     const gsm = new GameStateMachine(createModule(), createCampaign());
     const result = gsm.parseEffectString('level 10');
-    assertObjectEqual(result, { target: 'level', operation: 'set', value: 10 }, 'Should parse set effect');
+    assertObjectEqual(
+      result,
+      { target: 'level', operation: 'set', value: 10 },
+      'Should parse set effect',
+    );
   }
 
   console.log('Test 62: parseEffectString returns null for invalid');
@@ -913,10 +979,22 @@ async function runTests() {
   {
     const gsm = new GameStateMachine(createModule(), createCampaign());
     const actions = gsm.getAvailableActions();
-    assertTrue(actions.some((a) => a.type === 'move'), 'Should have move actions');
-    assertTrue(actions.some((a) => a.type === 'talk'), 'Should have talk actions');
-    assertTrue(actions.some((a) => a.type === 'interact'), 'Should have interact actions');
-    assertTrue(actions.some((a) => a.type === 'attack'), 'Should have attack action');
+    assertTrue(
+      actions.some((a) => a.type === 'move'),
+      'Should have move actions',
+    );
+    assertTrue(
+      actions.some((a) => a.type === 'talk'),
+      'Should have talk actions',
+    );
+    assertTrue(
+      actions.some((a) => a.type === 'interact'),
+      'Should have interact actions',
+    );
+    assertTrue(
+      actions.some((a) => a.type === 'attack'),
+      'Should have attack action',
+    );
   }
 
   console.log('Test 72: Empty scene has minimal actions');
@@ -941,7 +1019,10 @@ async function runTests() {
     const gsm = new GameStateMachine(createModule(), createCampaign());
     const result = await gsm.handleSceneInteraction({ type: 'flee' });
     assertIncludes(result.narration, '逃跑', 'Should mention fleeing');
-    assertTrue(result.available_actions.some((a) => a.type === 'move'), 'Should list exits');
+    assertTrue(
+      result.available_actions.some((a) => a.type === 'move'),
+      'Should list exits',
+    );
   }
 
   // ─── checkSkillSuccessEvents ───
@@ -1075,7 +1156,10 @@ async function runTests() {
   {
     const gsm = new GameStateMachine(createModule(), createCampaign());
     const result = gsm.handleDiceCheckInteraction({ skill: 'test', skill_value: 50 }, '');
-    assertTrue(['critical', 'extreme', 'hard', 'success', 'fail', 'fumble'].includes(result.result), 'Should have valid result type');
+    assertTrue(
+      ['critical', 'extreme', 'hard', 'success', 'fail', 'fumble'].includes(result.result),
+      'Should have valid result type',
+    );
     assertTrue(['extreme', 'hard', null].includes(result.degree), 'Should have valid degree');
   }
 

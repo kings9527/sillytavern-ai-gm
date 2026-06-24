@@ -3,7 +3,16 @@
  * Basic coverage for dev utilities and chat bridge core
  */
 
-import { MOCK_CAMPAIGN, MOCK_MODULE, createMockCampaign, createMockModule, isMockMode, devLog, devTimer, resetDevData } from '../utils/dev-mode.js';
+import {
+  MOCK_CAMPAIGN,
+  MOCK_MODULE,
+  createMockCampaign,
+  createMockModule,
+  isMockMode,
+  devLog,
+  devTimer,
+  resetDevData,
+} from '../utils/dev-mode.js';
 import { STChatBridge } from '../utils/st-chat-bridge.js';
 
 let passCount = 0;
@@ -89,7 +98,11 @@ test('STChatBridge constructor sets defaults', () => {
 });
 
 test('STChatBridge constructor accepts options', () => {
-  const bridge = new STChatBridge(null, { maxContextMessages: 10, autoParse: false, injectToChat: true });
+  const bridge = new STChatBridge(null, {
+    maxContextMessages: 10,
+    autoParse: false,
+    injectToChat: true,
+  });
   assert(bridge.maxContextMessages === 10, 'custom maxContextMessages');
   assert(bridge.autoParse === false, 'custom autoParse');
   assert(bridge.injectToChat === true, 'custom injectToChat');
@@ -141,7 +154,10 @@ test('STChatBridge getContext returns empty when disabled', () => {
 test('STChatBridge getContext returns cached messages when enabled', () => {
   const bridge = new STChatBridge(null);
   bridge.start();
-  bridge.messageCache = [{ role: 'user', text: 'hi' }, { role: 'gm', text: 'hello' }];
+  bridge.messageCache = [
+    { role: 'user', text: 'hi' },
+    { role: 'gm', text: 'hello' },
+  ];
   const ctx = bridge.getContext();
   assert(ctx.length === 2, 'should return 2 messages');
 });

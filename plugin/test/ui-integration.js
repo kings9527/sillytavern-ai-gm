@@ -96,11 +96,11 @@ function run() {
     console.log('✅ 所有关键检查通过');
   } else {
     console.log(`❌ 发现 ${errors.length} 个错误:`);
-    errors.forEach(e => console.log(`  - ${e}`));
+    errors.forEach((e) => console.log(`  - ${e}`));
   }
   if (warnings.length > 0) {
     console.log(`⚠️  发现 ${warnings.length} 个警告:`);
-    warnings.forEach(w => console.log(`  - ${w}`));
+    warnings.forEach((w) => console.log(`  - ${w}`));
   }
 
   if (errors.length > 0) {

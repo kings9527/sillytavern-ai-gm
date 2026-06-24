@@ -207,7 +207,9 @@ test('Parse intent - LLM unavailable → keyword fallback', async () => {
 test('Parse intent - LLM throws error → keyword fallback with warning', async () => {
   const mockLLM = {
     isAvailable: () => true,
-    chat: async () => { throw new Error('network timeout'); },
+    chat: async () => {
+      throw new Error('network timeout');
+    },
   };
   const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
   const intent = await sm.parseIntent('检查书架', null);
@@ -219,7 +221,10 @@ test('Parse intent - LLM markdown code block response', async () => {
   const mockLLM = {
     isAvailable: () => true,
     chat: async () => ({
-      content: '```json\n' + JSON.stringify({ action: 'talk', target: '守夜人', confidence: 0.88 }) + '\n```',
+      content:
+        '```json\n' +
+        JSON.stringify({ action: 'talk', target: '守夜人', confidence: 0.88 }) +
+        '\n```',
     }),
   };
   const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
@@ -274,7 +279,10 @@ test('Parse intent - empty input skips LLM', async () => {
   const callLog = [];
   const mockLLM = {
     isAvailable: () => true,
-    chat: async () => { callLog.push(1); return { content: '{"action":"move","confidence":0.9}' }; },
+    chat: async () => {
+      callLog.push(1);
+      return { content: '{"action":"move","confidence":0.9}' };
+    },
   };
   const sm = new GameStateMachine(testModule, testCampaign, mockLLM);
   const intent = await sm.parseIntent('', null);
@@ -734,7 +742,10 @@ test('Parse scene skill checks with success/failure branches', () => {
 `;
   const result = mdParserPhase2.parseMarkdown(md);
   const scene = result.scenes.library;
-  assert(scene.skill_checks.length === 2, `Expected 2 skill checks, got ${scene.skill_checks.length}`);
+  assert(
+    scene.skill_checks.length === 2,
+    `Expected 2 skill checks, got ${scene.skill_checks.length}`,
+  );
 
   const check1 = scene.skill_checks[0];
   assert(check1.name === '书架调查', 'Expected check1 name');
@@ -742,8 +753,14 @@ test('Parse scene skill checks with success/failure branches', () => {
   assert(check1.skills[0].name === '图书馆使用', 'Expected skill name');
   assert(check1.skills[0].target === 50, 'Expected skill target 50');
   assert(check1.success.goto === 'secret_room', 'Expected success goto');
-  assert(check1.success.effects.some(e => e.type === 'add_clue'), 'Expected add_clue effect');
-  assert(check1.failure.effects.some(e => e.type === 'sanity_loss'), 'Expected sanity_loss effect');
+  assert(
+    check1.success.effects.some((e) => e.type === 'add_clue'),
+    'Expected add_clue effect',
+  );
+  assert(
+    check1.failure.effects.some((e) => e.type === 'sanity_loss'),
+    'Expected sanity_loss effect',
+  );
 
   const check2 = scene.skill_checks[1];
   assert(check2.name === '门锁', 'Expected check2 name');

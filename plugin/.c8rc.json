@@ -1,9 +1,5 @@
 {
-  "exclude": [
-    "test/**",
-    "node_modules/**",
-    "coverage/**"
-  ],
+  "exclude": ["test/**", "node_modules/**", "coverage/**"],
   "reporter": ["text", "html"],
   "all": true,
   "clean": true

@@ -571,7 +571,7 @@ Scene: ${campaign_state.current_scene}
 Player: ${campaign_state.player_name} (HP ${Math.round(campaign_state.player_hp_ratio * 100)}%, SAN ${Math.round(campaign_state.player_san_ratio * 100)}%)
 Combat: ${campaign_state.is_combat ? 'YES' : 'NO'}${campaign_state.is_combat ? `, Player Turn: ${campaign_state.is_player_turn ? 'YES' : 'NO'}` : ''}
 
-${template.secrets?.length ? `Secrets: ${template.secrets.map(s => s.keyword).join(', ')}` : ''}
+${template.secrets?.length ? `Secrets: ${template.secrets.map((s) => s.keyword).join(', ')}` : ''}
 ${npc.secrets_revealed.length ? `Already revealed: ${npc.secrets_revealed.join(', ')}` : ''}
 ${npc.known_topics.length ? `Known topics: ${npc.known_topics.join(', ')}` : ''}
 
@@ -618,7 +618,10 @@ What do you do?`;
         const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
         parsed = JSON.parse(jsonText);
       } catch (parseError) {
-        console.warn(`[NPCDecisionEngine] LLM decision returned non-JSON for ${this.npcId}:`, parseError.message);
+        console.warn(
+          `[NPCDecisionEngine] LLM decision returned non-JSON for ${this.npcId}:`,
+          parseError.message,
+        );
         return null;
       }
 
@@ -638,7 +641,10 @@ What do you do?`;
         llm_enhanced: true,
       };
     } catch (error) {
-      console.warn(`[NPCDecisionEngine] LLM enhanced decision failed for ${this.npcId}:`, error.message);
+      console.warn(
+        `[NPCDecisionEngine] LLM enhanced decision failed for ${this.npcId}:`,
+        error.message,
+      );
       return null;
     }
   }
@@ -726,7 +732,10 @@ What do you do?`;
       try {
         return await this._generateLLMDialogue(contextSummary, mood, topic, llmClient);
       } catch (error) {
-        console.warn('[NPCDecisionEngine] LLM dialogue failed for ' + this.npcId + ':', error.message);
+        console.warn(
+          '[NPCDecisionEngine] LLM dialogue failed for ' + this.npcId + ':',
+          error.message,
+        );
       }
     }
 
@@ -775,7 +784,10 @@ If no secret is revealed, omit secretRevealed or set it to null."`;
       const jsonText = jsonMatch ? jsonMatch[1].trim() : raw;
       parsed = JSON.parse(jsonText);
     } catch (error) {
-      console.warn('[NPCDecisionEngine] Failed to parse LLM dialogue JSON, using raw text:', error.message);
+      console.warn(
+        '[NPCDecisionEngine] Failed to parse LLM dialogue JSON, using raw text:',
+        error.message,
+      );
       parsed.text = response.content.trim();
       parsed.emotion = mood;
     }

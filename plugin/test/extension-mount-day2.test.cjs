@@ -7,13 +7,16 @@ const { JSDOM } = require('jsdom');
 const assert = require('assert');
 
 // ---- 构建最小 DOM 环境 ----
-const dom = new JSDOM(`<!DOCTYPE html>
+const dom = new JSDOM(
+  `<!DOCTYPE html>
 <html>
 <body>
   <div id="extensionsMenu"></div>
   <div id="extensions_settings"></div>
 </body>
-</html>`, { runScripts: 'dangerously', url: 'http://localhost' });
+</html>`,
+  { runScripts: 'dangerously', url: 'http://localhost' },
+);
 
 global.document = dom.window.document;
 global.window = dom.window;
@@ -27,7 +30,7 @@ const mockEventSource = {
     mockEventListeners.get(event).push(handler);
   },
   emit: (event, ...args) => {
-    (mockEventListeners.get(event) || []).forEach(h => h(...args));
+    (mockEventListeners.get(event) || []).forEach((h) => h(...args));
   },
 };
 
@@ -38,7 +41,9 @@ const mockEventTypes = {
 };
 
 let settingsSaved = false;
-const mockSaveSettingsDebounced = () => { settingsSaved = true; };
+const mockSaveSettingsDebounced = () => {
+  settingsSaved = true;
+};
 
 const mockExtensionSettings = {};
 const mockGetContext = () => ({ chatId: 'test-chat-123', name: 'TestChar' });
@@ -92,8 +97,29 @@ const patchedCode = indexCode
 
 // 将 index.js 作为函数执行，提取导出
 const moduleExports = {};
-const wrapped = new Function('exports', 'document', 'window', 'eventSource', 'event_types', 'saveSettingsDebounced', 'getContext', 'renderExtensionTemplateAsync', 'extension_settings', patchedCode + '\nreturn { init, onEnable, onDisable };');
-const exported = wrapped(moduleExports, global.document, global.window, mockEventSource, mockEventTypes, mockSaveSettingsDebounced, mockGetContext, global.window.renderExtensionTemplateAsync, mockExtensionSettings);
+const wrapped = new Function(
+  'exports',
+  'document',
+  'window',
+  'eventSource',
+  'event_types',
+  'saveSettingsDebounced',
+  'getContext',
+  'renderExtensionTemplateAsync',
+  'extension_settings',
+  patchedCode + '\nreturn { init, onEnable, onDisable };',
+);
+const exported = wrapped(
+  moduleExports,
+  global.document,
+  global.window,
+  mockEventSource,
+  mockEventTypes,
+  mockSaveSettingsDebounced,
+  mockGetContext,
+  global.window.renderExtensionTemplateAsync,
+  mockExtensionSettings,
+);
 
 const { init, onEnable, onDisable } = exported;
 
@@ -127,9 +153,21 @@ async function testInitCreatesPanel() {
 }
 
 function testEventBindings() {
-  assert.strictEqual(mockEventListeners.has(mockEventTypes.CHAT_CHANGED), true, '必须绑定 CHAT_CHANGED');
-  assert.strictEqual(mockEventListeners.has(mockEventTypes.CHARACTER_MESSAGE_RENDERED), true, '必须绑定 CHARACTER_MESSAGE_RENDERED');
-  assert.strictEqual(mockEventListeners.has(mockEventTypes.USER_MESSAGE_RENDERED), true, '必须绑定 USER_MESSAGE_RENDERED');
+  assert.strictEqual(
+    mockEventListeners.has(mockEventTypes.CHAT_CHANGED),
+    true,
+    '必须绑定 CHAT_CHANGED',
+  );
+  assert.strictEqual(
+    mockEventListeners.has(mockEventTypes.CHARACTER_MESSAGE_RENDERED),
+    true,
+    '必须绑定 CHARACTER_MESSAGE_RENDERED',
+  );
+  assert.strictEqual(
+    mockEventListeners.has(mockEventTypes.USER_MESSAGE_RENDERED),
+    true,
+    '必须绑定 USER_MESSAGE_RENDERED',
+  );
   console.log('✅ ST 事件绑定通过');
 }
 

@@ -93,7 +93,16 @@ async function runTests() {
     let llmCalled = false;
     const mockLLM = {
       isAvailable: () => true,
-      chatJSON: async () => { llmCalled = true; return { intent: 'talk', confidence: 0.99, target: 'librarian', params: {}, reasoning: 'mock' }; },
+      chatJSON: async () => {
+        llmCalled = true;
+        return {
+          intent: 'talk',
+          confidence: 0.99,
+          target: 'librarian',
+          params: {},
+          reasoning: 'mock',
+        };
+      },
     };
     const parser = new IntentParser({ llmClient: mockLLM, useLLM: true, llmThreshold: 0.6 });
     const result = await parser.parse('攻击深潜者', testContext); // attack confidence 0.92
@@ -109,7 +118,13 @@ async function runTests() {
       isAvailable: () => true,
       chatJSON: async () => {
         llmCalled = true;
-        return { intent: 'investigate', confidence: 0.95, target: 'basement', params: {}, reasoning: 'mock' };
+        return {
+          intent: 'investigate',
+          confidence: 0.95,
+          target: 'basement',
+          params: {},
+          reasoning: 'mock',
+        };
       },
     };
     const parser = new IntentParser({ llmClient: mockLLM, useLLM: true, llmThreshold: 0.6 });
@@ -133,7 +148,9 @@ async function runTests() {
   {
     const mockLLM = {
       isAvailable: () => true,
-      chatJSON: async () => { throw new Error('Network timeout'); },
+      chatJSON: async () => {
+        throw new Error('Network timeout');
+      },
     };
     const parser = new IntentParser({ llmClient: mockLLM, useLLM: true });
     const result = await parser.parse('help the wounded', testContext);
@@ -145,7 +162,13 @@ async function runTests() {
   {
     const mockLLM = {
       isAvailable: () => true,
-      chatJSON: async () => ({ intent: 'unknown', confidence: 0.2, target: null, params: {}, reasoning: 'mock' }),
+      chatJSON: async () => ({
+        intent: 'unknown',
+        confidence: 0.2,
+        target: null,
+        params: {},
+        reasoning: 'mock',
+      }),
     };
     const parser = new IntentParser({ llmClient: mockLLM, useLLM: true });
     const result = await parser.parse('help the wounded', testContext);
@@ -158,7 +181,16 @@ async function runTests() {
     let llmCalled = false;
     const mockLLM = {
       isAvailable: () => true,
-      chatJSON: async () => { llmCalled = true; return { intent: 'move', confidence: 0.99, target: 'upstairs', params: {}, reasoning: 'mock' }; },
+      chatJSON: async () => {
+        llmCalled = true;
+        return {
+          intent: 'move',
+          confidence: 0.99,
+          target: 'upstairs',
+          params: {},
+          reasoning: 'mock',
+        };
+      },
     };
     const parser = new IntentParser({ llmClient: mockLLM, useLLM: false });
     const result = await parser.parse('help the wounded', testContext);
@@ -320,7 +352,11 @@ async function runTests() {
     for (const c of cases) {
       const result = await parser.parse(c.input, testContext);
       assertEqual(result.type, c.expectType, `parse(${JSON.stringify(c.input)}).type`);
-      assertEqual(result.confidence, c.expectConfidence, `parse(${JSON.stringify(c.input)}).confidence should be ${c.expectConfidence}`);
+      assertEqual(
+        result.confidence,
+        c.expectConfidence,
+        `parse(${JSON.stringify(c.input)}).confidence should be ${c.expectConfidence}`,
+      );
     }
   }
 
@@ -343,7 +379,10 @@ async function runTests() {
     for (const c of cases) {
       const result = await parser.parse(c.input, testContext);
       assertEqual(result.type, c.expectType, `parse("${c.input}").type`);
-      assertTrue(result.confidence <= 0.3, `parse("${c.input}").confidence should be low (got ${result.confidence})`);
+      assertTrue(
+        result.confidence <= 0.3,
+        `parse("${c.input}").confidence should be low (got ${result.confidence})`,
+      );
     }
   }
 
@@ -371,7 +410,10 @@ async function runTests() {
     // so entity lookup fails and falls back to raw text
     const r1 = await parser.parse('攻击！！深潜者？？', testContext);
     assertEqual(r1.type, 'attack', 'attack with punctuation should match');
-    assertTrue(typeof r1.target === 'string' && r1.target.includes('深潜者'), 'should include target in raw fallback');
+    assertTrue(
+      typeof r1.target === 'string' && r1.target.includes('深潜者'),
+      'should include target in raw fallback',
+    );
 
     // Move with full-width chars
     const r2 = await parser.parse('去「楼梯」', testContext);

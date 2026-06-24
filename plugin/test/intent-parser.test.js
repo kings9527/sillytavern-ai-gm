@@ -68,7 +68,10 @@ async function runTests() {
       const result = await parser.parse(c.input, testContext);
       assertEqual(result.type, c.expectType, `parse("${c.input}").type`);
       assertEqual(result.target, c.expectTarget, `parse("${c.input}").target`);
-      assertTrue(result.confidence >= 0.85, `parse("${c.input}").confidence >= 0.85 (got ${result.confidence})`);
+      assertTrue(
+        result.confidence >= 0.85,
+        `parse("${c.input}").confidence >= 0.85 (got ${result.confidence})`,
+      );
     }
   }
 

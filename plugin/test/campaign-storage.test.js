@@ -38,7 +38,11 @@ function deepEqual(a, b, message) {
 
 // Cleanup test DB before/after
 function cleanup() {
-  try { fs.unlinkSync(TEST_DB); } catch { /* ignore */ }
+  try {
+    fs.unlinkSync(TEST_DB);
+  } catch {
+    /* ignore */
+  }
 }
 
 const sampleCampaign = {
@@ -192,7 +196,10 @@ test('Generate log summary', () => {
   assert(full.campaign_id === 'sum_test', 'Expected campaign id');
   assert(full.total_entries === 5, `Expected 5 entries, got ${full.total_entries}`);
   assert(full.summary.total_actions === 5, 'Expected 5 total actions');
-  assert(full.summary.combat_rounds === 2, `Expected 2 combat rounds, got ${full.summary.combat_rounds}`);
+  assert(
+    full.summary.combat_rounds === 2,
+    `Expected 2 combat rounds, got ${full.summary.combat_rounds}`,
+  );
   assert(full.summary.dice_checks === 1, 'Expected 1 dice check');
   assert(full.summary.scene_transitions === 1, 'Expected 1 scene transition');
   assert(full.summary.type_distribution.combat === 2, 'Expected 2 combat types');
@@ -314,8 +321,20 @@ console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some test
 
 // Cleanup
 cleanup();
-try { fs.unlinkSync(TEST_DB + '_summary'); } catch { /* ignore */ }
-try { fs.unlinkSync(TEST_DB + '_clear'); } catch { /* ignore */ }
-try { fs.unlinkSync(TEST_DB + '_close'); } catch { /* ignore */ }
+try {
+  fs.unlinkSync(TEST_DB + '_summary');
+} catch {
+  /* ignore */
+}
+try {
+  fs.unlinkSync(TEST_DB + '_clear');
+} catch {
+  /* ignore */
+}
+try {
+  fs.unlinkSync(TEST_DB + '_close');
+} catch {
+  /* ignore */
+}
 
 process.exit(failCount > 0 ? 1 : 0);

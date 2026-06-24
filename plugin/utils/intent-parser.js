@@ -95,7 +95,14 @@ export class IntentParser {
 
     // === 0. Dice rolls (not an action, but detected) ===
     if (/^\d*d\d+/.test(input) || /^\/?r(oll)?\s+/i.test(input)) {
-      return this._makeIntent('dice_roll', 0.95, null, { expression: input.replace(/^\/?r(oll)?\s+/i, '') }, input, 'Dice roll expression');
+      return this._makeIntent(
+        'dice_roll',
+        0.95,
+        null,
+        { expression: input.replace(/^\/?r(oll)?\s+/i, '') },
+        input,
+        'Dice roll expression',
+      );
     }
 
     // === 1. Talk / Address NPC ===
@@ -175,8 +182,9 @@ export class IntentParser {
         if (pattern.action === 'talk') {
           if (match[1]) {
             const cleaned = this._cleanTargetName(match[1]);
-            target = this._findEntity(cleaned, context.npcs, 'npc') ||
-                     this._findEntityByPartial(cleaned, context.npcs, 'npc');
+            target =
+              this._findEntity(cleaned, context.npcs, 'npc') ||
+              this._findEntityByPartial(cleaned, context.npcs, 'npc');
           }
           if (match[2]) {
             topic = match[2].trim();
@@ -214,9 +222,10 @@ export class IntentParser {
       const match = input.match(pattern.regex);
       if (match) {
         const cleaned = this._cleanTargetName(match[1]);
-        const target = this._findEntity(cleaned, context.exits, 'exit') ||
-                        this._findEntity(cleaned, context.scenes, 'scene') ||
-                        match[1].trim();
+        const target =
+          this._findEntity(cleaned, context.exits, 'exit') ||
+          this._findEntity(cleaned, context.scenes, 'scene') ||
+          match[1].trim();
         return this._makeIntent(
           pattern.action,
           0.9,
@@ -246,14 +255,18 @@ export class IntentParser {
         let weapon = null;
 
         if (match[2]) {
-          weapon = this._findEntity(this._cleanTargetName(match[1]), context.items, 'item') || match[1].trim();
-          target = this._findEntity(this._cleanTargetName(match[2]), context.npcs, 'npc') ||
-                   this._findEntity(this._cleanTargetName(match[2]), context.enemies, 'enemy') ||
-                   match[2].trim();
+          weapon =
+            this._findEntity(this._cleanTargetName(match[1]), context.items, 'item') ||
+            match[1].trim();
+          target =
+            this._findEntity(this._cleanTargetName(match[2]), context.npcs, 'npc') ||
+            this._findEntity(this._cleanTargetName(match[2]), context.enemies, 'enemy') ||
+            match[2].trim();
         } else if (match[1]) {
-          target = this._findEntity(this._cleanTargetName(match[1]), context.npcs, 'npc') ||
-                   this._findEntity(this._cleanTargetName(match[1]), context.enemies, 'enemy') ||
-                   match[1].trim();
+          target =
+            this._findEntity(this._cleanTargetName(match[1]), context.npcs, 'npc') ||
+            this._findEntity(this._cleanTargetName(match[1]), context.enemies, 'enemy') ||
+            match[1].trim();
         }
 
         return this._makeIntent(
@@ -272,15 +285,25 @@ export class IntentParser {
   _matchInvestigate(input, lower, context) {
     const investigatePatterns = [
       { regex: /^(?:调查|检查|查看|搜索|侦查|侦察|搜寻|寻找)(.+)/, action: 'investigate' },
-      { regex: /^(?:investigate|inspect|search|examine|check|look for|find|scout)\s+(.+)/i, action: 'investigate' },
+      {
+        regex: /^(?:investigate|inspect|search|examine|check|look for|find|scout)\s+(.+)/i,
+        action: 'investigate',
+      },
       { regex: /^(?:search|investigate|look into)\s*$/i, action: 'investigate' },
       { regex: /^(?:使用|用)(.+)/, action: 'investigate' },
       { regex: /^(?:分析|研究|解读|调查)(.+)/, action: 'investigate' },
-      { regex: /^(?:心理学|医学|神秘学|历史|语言|图书馆|侦查|聆听|追踪|开锁|潜行|攀爬|说服|恐吓)(.+)/, action: 'investigate' },
+      {
+        regex:
+          /^(?:心理学|医学|神秘学|历史|语言|图书馆|侦查|聆听|追踪|开锁|潜行|攀爬|说服|恐吓)(.+)/,
+        action: 'investigate',
+      },
       { regex: /^(?:使用|用)(.+?)(?:在|于|对)(.+)/, action: 'use_item' },
       { regex: /^(?:use)\s+(.+?)\s+(?:to|on)\s+(.+)/i, action: 'use_item' },
       { regex: /^(?:感知|察觉|感觉|闻到|听到|看到)/, action: 'check' },
-      { regex: /^(?:perception|spot|sense|notice|hear|smell|feel|detect)\s+(.+)/i, action: 'check' },
+      {
+        regex: /^(?:perception|spot|sense|notice|hear|smell|feel|detect)\s+(.+)/i,
+        action: 'check',
+      },
       { regex: /^(?:roll|检定|投骰)\s+(.+)/i, action: 'check' },
     ];
 
@@ -292,14 +315,16 @@ export class IntentParser {
 
         if (pattern.action === 'use_item') {
           const cleanedTarget = this._cleanTargetName(match[2]);
-          target = this._findEntity(cleanedTarget, context.items, 'item') ||
-                   this._findEntity(cleanedTarget, context.objects, 'object') ||
-                   this._findEntity(cleanedTarget, context.exits, 'exit') ||
-                   match[2].trim();
+          target =
+            this._findEntity(cleanedTarget, context.items, 'item') ||
+            this._findEntity(cleanedTarget, context.objects, 'object') ||
+            this._findEntity(cleanedTarget, context.exits, 'exit') ||
+            match[2].trim();
           const cleanedItem = this._cleanTargetName(match[1]);
-          const item = this._findEntity(cleanedItem, context.items, 'item') ||
-                       this._findEntity(cleanedItem, context.objects, 'object') ||
-                       match[1].trim();
+          const item =
+            this._findEntity(cleanedItem, context.items, 'item') ||
+            this._findEntity(cleanedItem, context.objects, 'object') ||
+            match[1].trim();
           return this._makeIntent(
             'use_item',
             0.87,
@@ -312,11 +337,15 @@ export class IntentParser {
 
         if (match[1]) {
           const cleaned = this._cleanTargetName(match[1]);
-          target = this._findEntity(cleaned, context.objects, 'object') ||
-                   this._findEntity(cleaned, context.items, 'item') ||
-                   this._findEntity(cleaned, context.scenes, 'scene') ||
-                   ((context.scene && (context.scene.id === cleaned || context.scene.title?.toLowerCase().includes(cleaned))) ? context.scene.id : null) ||
-                   match[1].trim();
+          target =
+            this._findEntity(cleaned, context.objects, 'object') ||
+            this._findEntity(cleaned, context.items, 'item') ||
+            this._findEntity(cleaned, context.scenes, 'scene') ||
+            (context.scene &&
+            (context.scene.id === cleaned || context.scene.title?.toLowerCase().includes(cleaned))
+              ? context.scene.id
+              : null) ||
+            match[1].trim();
           // Try to extract skill name from the FULL input, not just match[1]
           skill = this._extractSkill(input);
         } else {
@@ -359,14 +388,19 @@ export class IntentParser {
         let item = null;
 
         if (match[2]) {
-          item = this._findEntity(this._cleanTargetName(match[1]), context.items, 'item') || match[1].trim();
-          target = this._findEntity(this._cleanTargetName(match[2]), context.npcs, 'npc') || match[2].trim();
+          item =
+            this._findEntity(this._cleanTargetName(match[1]), context.items, 'item') ||
+            match[1].trim();
+          target =
+            this._findEntity(this._cleanTargetName(match[2]), context.npcs, 'npc') ||
+            match[2].trim();
         } else if (match[1]) {
           const cleaned = this._cleanTargetName(match[1]);
-          item = this._findEntity(cleaned, context.items, 'item') ||
-                 this._findEntity(cleaned, context.objects, 'object') ||
-                 this._findEntity(cleaned, context.exits, 'exit') ||
-                 match[1].trim();
+          item =
+            this._findEntity(cleaned, context.items, 'item') ||
+            this._findEntity(cleaned, context.objects, 'object') ||
+            this._findEntity(cleaned, context.exits, 'exit') ||
+            match[1].trim();
         }
 
         return this._makeIntent(
@@ -394,9 +428,10 @@ export class IntentParser {
       const match = input.match(pattern.regex);
       if (match) {
         const cleaned = this._cleanTargetName(match[1]);
-        const target = this._findEntity(cleaned, context.items, 'item') ||
-                       this._findEntity(cleaned, context.objects, 'object') ||
-                       match[1].trim();
+        const target =
+          this._findEntity(cleaned, context.items, 'item') ||
+          this._findEntity(cleaned, context.objects, 'object') ||
+          match[1].trim();
         return this._makeIntent(
           pattern.action,
           0.85,
@@ -457,8 +492,10 @@ export class IntentParser {
     for (const pattern of stealthPatterns) {
       const match = input.match(pattern.regex);
       if (match) {
-        const target = match[1] ?
-          (this._findEntity(this._cleanTargetName(match[1]), context.npcs, 'npc') || match[1].trim()) : null;
+        const target = match[1]
+          ? this._findEntity(this._cleanTargetName(match[1]), context.npcs, 'npc') ||
+            match[1].trim()
+          : null;
         const skill = this._extractSkill(input);
         return this._makeIntent(
           pattern.action,
@@ -476,7 +513,10 @@ export class IntentParser {
   _matchMagic(input, lower, context) {
     const magicPatterns = [
       { regex: /^(?:施法|施放|念咒|召唤|仪式|献祭|祈祷|诅咒)(.+)/, action: 'cast' },
-      { regex: /^(?:cast|cast spell|invoke|summon|ritual|sacrifice|pray|curse|perform)\s+(.+)/i, action: 'cast' },
+      {
+        regex: /^(?:cast|cast spell|invoke|summon|ritual|sacrifice|pray|curse|perform)\s+(.+)/i,
+        action: 'cast',
+      },
       { regex: /^(?:使用|施展|释放)(.+?)(?:魔法|法术|咒术|咒语|仪式)/, action: 'cast' },
       { regex: /^(?:use|channel|focus)\s+(.+?)\s+(?:magic|spell|power|energy)/i, action: 'cast' },
     ];
@@ -501,7 +541,10 @@ export class IntentParser {
   _matchRest(input, lower, context) {
     const restPatterns = [
       { regex: /^(?:休息|睡觉|恢复|治疗|包扎|坐下|躺下)/, action: 'rest' },
-      { regex: /^(?:rest|sleep|recover|heal|treat wounds|bandage|sit down|lie down)\b/i, action: 'rest' },
+      {
+        regex: /^(?:rest|sleep|recover|heal|treat wounds|bandage|sit down|lie down)\b/i,
+        action: 'rest',
+      },
       { regex: /^(?:wait|stay|camp|set up camp|make camp)\b/i, action: 'rest' },
       { regex: /^(?:等待|守候|扎营|露营|停留)/, action: 'rest' },
     ];
@@ -524,14 +567,19 @@ export class IntentParser {
   _matchFlee(input, lower, context) {
     const fleePatterns = [
       { regex: /^(?:逃跑|逃离|逃走|撤退|跑|快跑|离开|撤离|逃命)(.+)?/, action: 'flee' },
-      { regex: /^(?:run|flee|escape|retreat|withdraw|get away|break away|run away)\b/i, action: 'flee' },
+      {
+        regex: /^(?:run|flee|escape|retreat|withdraw|get away|break away|run away)\b/i,
+        action: 'flee',
+      },
     ];
 
     for (const pattern of fleePatterns) {
       const match = input.match(pattern.regex);
       if (match) {
-        const destination = match[1] ?
-          (this._findEntity(this._cleanTargetName(match[1]), context.exits, 'exit') || match[1].trim()) : null;
+        const destination = match[1]
+          ? this._findEntity(this._cleanTargetName(match[1]), context.exits, 'exit') ||
+            match[1].trim()
+          : null;
         return this._makeIntent(
           'flee',
           0.9,
@@ -581,9 +629,10 @@ export class IntentParser {
       const match = input.match(pattern.regex);
       if (match) {
         const cleaned = this._cleanTargetName(match[1]);
-        const target = this._findEntity(cleaned, context.npcs, 'npc') ||
-                        this._findEntity(cleaned, context.enemies, 'enemy') ||
-                        match[1].trim();
+        const target =
+          this._findEntity(cleaned, context.npcs, 'npc') ||
+          this._findEntity(cleaned, context.enemies, 'enemy') ||
+          match[1].trim();
         return this._makeIntent(
           pattern.action,
           0.85,
@@ -682,7 +731,20 @@ What is the player's intent?`;
    */
   _cleanTargetName(name) {
     if (!name) return '';
-    const stopWords = ['the', 'a', 'an', 'to', 'on', 'at', 'for', 'with', 'from', 'of', 'in', 'into'];
+    const stopWords = [
+      'the',
+      'a',
+      'an',
+      'to',
+      'on',
+      'at',
+      'for',
+      'with',
+      'from',
+      'of',
+      'in',
+      'into',
+    ];
     let cleaned = name.toLowerCase().trim();
     for (const sw of stopWords) {
       cleaned = cleaned.replace(new RegExp(`^${sw}\\s+`, 'i'), '');
@@ -757,18 +819,18 @@ What is the player's intent?`;
     const skillMap = {
       'library use': ['图书馆', '图书', 'library', 'research', '查找'],
       'spot hidden': ['侦查', 'spot', '观察', '发现', 'hidden', 'look for'],
-      'listen': ['聆听', 'listen', '听', 'hear'],
-      'psychology': ['心理学', 'psychology', '读心', '心理'],
-      'persuade': ['说服', 'persuade', '劝说', 'negotiate'],
-      'intimidate': ['恐吓', 'intimidate', '威胁', '吓唬'],
-      'medicine': ['医学', 'medicine', '治疗', '急救', 'first aid'],
-      'occult': ['神秘学', 'occult', '神秘', '魔法', '法术'],
-      'history': ['历史', 'history', '考古', 'artifact'],
-      'languages': ['语言', 'languages', '翻译', 'translate', 'read'],
-      'climb': ['攀爬', 'climb', '爬', '攀登'],
-      'locksmith': ['开锁', 'locksmith', '锁', 'pick lock'],
-      'stealth': ['潜行', 'stealth', '躲藏', 'hide', 'sneak'],
-      'track': ['追踪', 'track', '跟踪', 'follow', 'trail'],
+      listen: ['聆听', 'listen', '听', 'hear'],
+      psychology: ['心理学', 'psychology', '读心', '心理'],
+      persuade: ['说服', 'persuade', '劝说', 'negotiate'],
+      intimidate: ['恐吓', 'intimidate', '威胁', '吓唬'],
+      medicine: ['医学', 'medicine', '治疗', '急救', 'first aid'],
+      occult: ['神秘学', 'occult', '神秘', '魔法', '法术'],
+      history: ['历史', 'history', '考古', 'artifact'],
+      languages: ['语言', 'languages', '翻译', 'translate', 'read'],
+      climb: ['攀爬', 'climb', '爬', '攀登'],
+      locksmith: ['开锁', 'locksmith', '锁', 'pick lock'],
+      stealth: ['潜行', 'stealth', '躲藏', 'hide', 'sneak'],
+      track: ['追踪', 'track', '跟踪', 'follow', 'trail'],
     };
 
     for (const [skill, keywords] of Object.entries(skillMap)) {
@@ -787,7 +849,7 @@ What is the player's intent?`;
     if (context.npcs && Object.keys(context.npcs).length > 0) {
       const npcList = Object.entries(context.npcs)
         .map(([id, npc]) => {
-          const name = typeof npc === 'string' ? npc : (npc.name || id);
+          const name = typeof npc === 'string' ? npc : npc.name || id;
           return name;
         })
         .join(', ');
@@ -796,7 +858,7 @@ What is the player's intent?`;
     if (context.exits && Object.keys(context.exits).length > 0) {
       const exitList = Object.entries(context.exits)
         .map(([id, exit]) => {
-          const name = typeof exit === 'string' ? exit : (exit.name || id);
+          const name = typeof exit === 'string' ? exit : exit.name || id;
           return name;
         })
         .join(', ');
@@ -805,7 +867,7 @@ What is the player's intent?`;
     if (context.items && Object.keys(context.items).length > 0) {
       const itemList = Object.entries(context.items)
         .map(([id, item]) => {
-          const name = typeof item === 'string' ? item : (item.name || id);
+          const name = typeof item === 'string' ? item : item.name || id;
           return name;
         })
         .join(', ');

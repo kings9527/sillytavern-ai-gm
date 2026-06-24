@@ -8,13 +8,13 @@ const CSS_NS = 'ai-gm-scene';
 
 /** 场景氛围配置：映射到 CSS 类名 */
 const ATMOSPHERE_MAP = {
-  calm:      { class: 'calm',      icon: '🌙', label: '平静' },
-  tense:     { class: 'tense',     icon: '⚡', label: '紧张' },
-  horror:    { class: 'horror',    icon: '👁', label: '恐惧' },
-  combat:    { class: 'combat',    icon: '⚔', label: '战斗' },
-  madness:   { class: 'madness',   icon: '🌀', label: '疯狂' },
-  mystery:   { class: 'mystery',   icon: '🔮', label: '神秘' },
-  death:     { class: 'death',     icon: '💀', label: '死亡' },
+  calm: { class: 'calm', icon: '🌙', label: '平静' },
+  tense: { class: 'tense', icon: '⚡', label: '紧张' },
+  horror: { class: 'horror', icon: '👁', label: '恐惧' },
+  combat: { class: 'combat', icon: '⚔', label: '战斗' },
+  madness: { class: 'madness', icon: '🌀', label: '疯狂' },
+  mystery: { class: 'mystery', icon: '🔮', label: '神秘' },
+  death: { class: 'death', icon: '💀', label: '死亡' },
 };
 
 /** 初始化场景渲染器，挂载到 container */
@@ -84,10 +84,10 @@ function renderScene(scene) {
   }
 
   if (metaEl) {
-    const keys = (scene.world_info_keys || []).map(k => `<span class="${CSS_NS}-tag">${escapeHtml(k)}</span>`).join('');
-    metaEl.innerHTML = keys
-      ? `<div class="${CSS_NS}-tags">${keys}</div>`
-      : '';
+    const keys = (scene.world_info_keys || [])
+      .map((k) => `<span class="${CSS_NS}-tag">${escapeHtml(k)}</span>`)
+      .join('');
+    metaEl.innerHTML = keys ? `<div class="${CSS_NS}-tags">${keys}</div>` : '';
   }
 
   if (interEl) {
@@ -95,22 +95,24 @@ function renderScene(scene) {
     interEl.innerHTML = items.length
       ? `<div class="${CSS_NS}-interact-title">可交互</div>
          <div class="${CSS_NS}-interact-list">
-           ${items.map(it => `<button class="${CSS_NS}-interact-btn" data-item="${escapeHtml(it)}">${escapeHtml(it)}</button>`).join('')}
+           ${items.map((it) => `<button class="${CSS_NS}-interact-btn" data-item="${escapeHtml(it)}">${escapeHtml(it)}</button>`).join('')}
          </div>`
       : '';
   }
 
   // 触发氛围切换事件
-  document.dispatchEvent(new CustomEvent('ai-gm:atmosphere-change', {
-    detail: { atmosphere: scene.atmosphere, sceneId: scene.id },
-  }));
+  document.dispatchEvent(
+    new CustomEvent('ai-gm:atmosphere-change', {
+      detail: { atmosphere: scene.atmosphere, sceneId: scene.id },
+    }),
+  );
 }
 
 /** 格式化描述文本：保留换行，添加段落 */
 function formatDescription(text) {
   return escapeHtml(text)
     .split(/\n\n+/)
-    .map(p => `<p class="${CSS_NS}-para">${p}</p>`)
+    .map((p) => `<p class="${CSS_NS}-para">${p}</p>`)
     .join('');
 }
 
@@ -218,11 +220,26 @@ function injectSceneStyles(root) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 
 /* ---------- exports ---------- */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initSceneRenderer, renderScene, setAtmosphere, toggleTypewriter, ATMOSPHERE_MAP };
+  module.exports = {
+    initSceneRenderer,
+    renderScene,
+    setAtmosphere,
+    toggleTypewriter,
+    ATMOSPHERE_MAP,
+  };
 }
-window.AiGmScene = { initSceneRenderer, renderScene, setAtmosphere, toggleTypewriter, ATMOSPHERE_MAP };
+window.AiGmScene = {
+  initSceneRenderer,
+  renderScene,
+  setAtmosphere,
+  toggleTypewriter,
+  ATMOSPHERE_MAP,
+};
