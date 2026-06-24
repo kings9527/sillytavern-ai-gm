@@ -23,6 +23,8 @@ const tests = [
   'dev-mode.test.js',
   'llm-client-extended.test.js',
   'state-machine.test.js',
+  'combat-tracker.test.js',
+  'module-parser.test.js',
 ];
 
 let totalPass = 0;
