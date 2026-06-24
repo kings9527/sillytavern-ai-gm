@@ -139,7 +139,10 @@ id: no-scenes
 This is just a description without any scenes.
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('No scenes')), 'Expected no scenes warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('No scenes')),
+    'Expected no scenes warning',
+  );
 });
 
 test('parseMarkdown warns when no NPCs found', () => {
@@ -153,7 +156,10 @@ id: no-npcs
 No NPCs here.
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('No NPCs')), 'Expected no NPCs warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('No NPCs')),
+    'Expected no NPCs warning',
+  );
 });
 
 // ─── Circular Reference Detection ───
@@ -175,7 +181,10 @@ test('validate detects circular scene path A -> B -> A', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.warnings.some((w) => w.includes('Circular')), 'Expected circular warning');
+  assert(
+    result.warnings.some((w) => w.includes('Circular')),
+    'Expected circular warning',
+  );
   assert(result.valid === true, 'Expected valid (circular is warning, not error)');
 });
 
@@ -194,7 +203,10 @@ test('validate detects circular scene path A -> B -> C -> A', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.warnings.some((w) => w.includes('Circular')), 'Expected circular warning');
+  assert(
+    result.warnings.some((w) => w.includes('Circular')),
+    'Expected circular warning',
+  );
 });
 
 test('validate does not warn on non-circular path', () => {
@@ -221,11 +233,26 @@ console.log('\n--- Schema Validation Failures ---');
 test('validate fails on missing module fields', () => {
   const result = jsonParser.validate({ id: 'bad' });
   assert(result.valid === false, 'Expected invalid');
-  assert(result.errors.some((e) => e.includes('name')), 'Expected name error');
-  assert(result.errors.some((e) => e.includes('version')), 'Expected version error');
-  assert(result.errors.some((e) => e.includes('system')), 'Expected system error');
-  assert(result.errors.some((e) => e.includes('scenes')), 'Expected scenes error');
-  assert(result.errors.some((e) => e.includes('npcs')), 'Expected npcs error');
+  assert(
+    result.errors.some((e) => e.includes('name')),
+    'Expected name error',
+  );
+  assert(
+    result.errors.some((e) => e.includes('version')),
+    'Expected version error',
+  );
+  assert(
+    result.errors.some((e) => e.includes('system')),
+    'Expected system error',
+  );
+  assert(
+    result.errors.some((e) => e.includes('scenes')),
+    'Expected scenes error',
+  );
+  assert(
+    result.errors.some((e) => e.includes('npcs')),
+    'Expected npcs error',
+  );
 });
 
 test('validate fails on invalid SemVer version', () => {
@@ -239,7 +266,10 @@ test('validate fails on invalid SemVer version', () => {
   };
   const result = jsonParser.validate(module);
   assert(result.valid === false, 'Expected invalid');
-  assert(result.errors.some((e) => e.includes('SemVer')), 'Expected SemVer error');
+  assert(
+    result.errors.some((e) => e.includes('SemVer')),
+    'Expected SemVer error',
+  );
 });
 
 test('validate warns on unknown system', () => {
@@ -252,7 +282,10 @@ test('validate warns on unknown system', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.warnings.some((w) => w.includes('Unknown system')), 'Expected unknown system warning');
+  assert(
+    result.warnings.some((w) => w.includes('Unknown system')),
+    'Expected unknown system warning',
+  );
 });
 
 test('validate fails on scene missing id', () => {
@@ -265,7 +298,10 @@ test('validate fails on scene missing id', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('missing id')), 'Expected scene missing id');
+  assert(
+    result.errors.some((e) => e.includes('missing id')),
+    'Expected scene missing id',
+  );
 });
 
 test('validate fails on scene missing title', () => {
@@ -278,7 +314,10 @@ test('validate fails on scene missing title', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('missing title')), 'Expected scene missing title');
+  assert(
+    result.errors.some((e) => e.includes('missing title')),
+    'Expected scene missing title',
+  );
 });
 
 test('validate fails on scene missing description', () => {
@@ -291,7 +330,10 @@ test('validate fails on scene missing description', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('missing description')), 'Expected scene missing description');
+  assert(
+    result.errors.some((e) => e.includes('missing description')),
+    'Expected scene missing description',
+  );
 });
 
 test('validate fails on NPC missing id', () => {
@@ -304,7 +346,10 @@ test('validate fails on NPC missing id', () => {
     npcs: { npc1: { name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('NPC') && e.includes('missing id')), 'Expected NPC missing id');
+  assert(
+    result.errors.some((e) => e.includes('NPC') && e.includes('missing id')),
+    'Expected NPC missing id',
+  );
 });
 
 test('validate fails on NPC missing name', () => {
@@ -317,7 +362,10 @@ test('validate fails on NPC missing name', () => {
     npcs: { npc1: { id: 'npc1', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('NPC') && e.includes('missing name')), 'Expected NPC missing name');
+  assert(
+    result.errors.some((e) => e.includes('NPC') && e.includes('missing name')),
+    'Expected NPC missing name',
+  );
 });
 
 test('validate warns on NPC with no attitude or role', () => {
@@ -330,7 +378,10 @@ test('validate warns on NPC with no attitude or role', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.warnings.some((w) => w.includes('no attitude or role')), 'Expected no attitude warning');
+  assert(
+    result.warnings.some((w) => w.includes('no attitude or role')),
+    'Expected no attitude warning',
+  );
 });
 
 test('validate fails on duplicate scene and NPC IDs', () => {
@@ -344,7 +395,10 @@ test('validate fails on duplicate scene and NPC IDs', () => {
   };
   const result = jsonParser.validate(module);
   assert(result.valid === false, 'Expected invalid');
-  assert(result.errors.some((e) => e.includes('Duplicate')), 'Expected duplicate error');
+  assert(
+    result.errors.some((e) => e.includes('Duplicate')),
+    'Expected duplicate error',
+  );
 });
 
 test('validate fails on duplicate item IDs', () => {
@@ -358,7 +412,10 @@ test('validate fails on duplicate item IDs', () => {
     items: { a: { id: 'a', name: 'Item' } }, // duplicate key 'a' conflicts with scene
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Duplicate')), 'Expected duplicate item error');
+  assert(
+    result.errors.some((e) => e.includes('Duplicate')),
+    'Expected duplicate item error',
+  );
 });
 
 test('validate fails on item missing id', () => {
@@ -372,7 +429,10 @@ test('validate fails on item missing id', () => {
     items: { item1: { name: 'Item' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Item') && e.includes('missing id')), 'Expected item missing id');
+  assert(
+    result.errors.some((e) => e.includes('Item') && e.includes('missing id')),
+    'Expected item missing id',
+  );
 });
 
 test('validate fails on item missing name', () => {
@@ -386,7 +446,10 @@ test('validate fails on item missing name', () => {
     items: { item1: { id: 'item1' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Item') && e.includes('missing name')), 'Expected item missing name');
+  assert(
+    result.errors.some((e) => e.includes('Item') && e.includes('missing name')),
+    'Expected item missing name',
+  );
 });
 
 test('validate fails on ending missing id', () => {
@@ -400,7 +463,10 @@ test('validate fails on ending missing id', () => {
     endings: { end1: { title: 'End' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Ending') && e.includes('missing id')), 'Expected ending missing id');
+  assert(
+    result.errors.some((e) => e.includes('Ending') && e.includes('missing id')),
+    'Expected ending missing id',
+  );
 });
 
 test('validate fails on ending missing title', () => {
@@ -414,7 +480,10 @@ test('validate fails on ending missing title', () => {
     endings: { end1: { id: 'end1' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Ending') && e.includes('missing title')), 'Expected ending missing title');
+  assert(
+    result.errors.some((e) => e.includes('Ending') && e.includes('missing title')),
+    'Expected ending missing title',
+  );
 });
 
 test('validate fails on global event missing id', () => {
@@ -428,7 +497,10 @@ test('validate fails on global event missing id', () => {
     global_events: [{ trigger: { type: 'action' }, effects: [] }],
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('event') && e.includes('missing id')), 'Expected event missing id');
+  assert(
+    result.errors.some((e) => e.includes('event') && e.includes('missing id')),
+    'Expected event missing id',
+  );
 });
 
 test('validate fails on global event missing trigger', () => {
@@ -442,7 +514,10 @@ test('validate fails on global event missing trigger', () => {
     global_events: [{ id: 'ev1', effects: [] }],
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Event') && e.includes('missing trigger')), 'Expected event missing trigger');
+  assert(
+    result.errors.some((e) => e.includes('Event') && e.includes('missing trigger')),
+    'Expected event missing trigger',
+  );
 });
 
 test('validate warns on global event with no effects', () => {
@@ -456,7 +531,10 @@ test('validate warns on global event with no effects', () => {
     global_events: [{ id: 'ev1', trigger: { type: 'action' }, effects: [] }],
   };
   const result = jsonParser.validate(module);
-  assert(result.warnings.some((w) => w.includes('no effects')), 'Expected no effects warning');
+  assert(
+    result.warnings.some((w) => w.includes('no effects')),
+    'Expected no effects warning',
+  );
 });
 
 test('validate fails on scene event missing id', () => {
@@ -466,12 +544,22 @@ test('validate fails on scene event missing id', () => {
     version: '1.0.0',
     system: 'coc7e',
     scenes: {
-      a: { id: 'a', title: 'A', description: 'd', exits: [], npcs: [], events: [{ trigger: { type: 'action' }, effects: [] }] },
+      a: {
+        id: 'a',
+        title: 'A',
+        description: 'd',
+        exits: [],
+        npcs: [],
+        events: [{ trigger: { type: 'action' }, effects: [] }],
+      },
     },
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('event') && e.includes('missing id')), 'Expected scene event missing id');
+  assert(
+    result.errors.some((e) => e.includes('event') && e.includes('missing id')),
+    'Expected scene event missing id',
+  );
 });
 
 test('validate fails on start_scene not found', () => {
@@ -485,7 +573,10 @@ test('validate fails on start_scene not found', () => {
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('Start scene not found')), 'Expected start scene error');
+  assert(
+    result.errors.some((e) => e.includes('Start scene not found')),
+    'Expected start scene error',
+  );
 });
 
 test('validate fails on undefined scene in exit target', () => {
@@ -495,12 +586,22 @@ test('validate fails on undefined scene in exit target', () => {
     version: '1.0.0',
     system: 'coc7e',
     scenes: {
-      a: { id: 'a', title: 'A', description: 'd', exits: [{ target: 'nonexistent', label: 'Bad' }], npcs: [], events: [] },
+      a: {
+        id: 'a',
+        title: 'A',
+        description: 'd',
+        exits: [{ target: 'nonexistent', label: 'Bad' }],
+        npcs: [],
+        events: [],
+      },
     },
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('exit references undefined scene')), 'Expected undefined scene error');
+  assert(
+    result.errors.some((e) => e.includes('exit references undefined scene')),
+    'Expected undefined scene error',
+  );
 });
 
 test('validate fails on undefined item in interactables', () => {
@@ -510,12 +611,23 @@ test('validate fails on undefined item in interactables', () => {
     version: '1.0.0',
     system: 'coc7e',
     scenes: {
-      a: { id: 'a', title: 'A', description: 'd', exits: [], npcs: [], interactables: ['missing_item'], events: [] },
+      a: {
+        id: 'a',
+        title: 'A',
+        description: 'd',
+        exits: [],
+        npcs: [],
+        interactables: ['missing_item'],
+        events: [],
+      },
     },
     npcs: { npc1: { id: 'npc1', name: 'NPC', attitude: 'neutral' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('undefined item')), 'Expected undefined item error');
+  assert(
+    result.errors.some((e) => e.includes('undefined item')),
+    'Expected undefined item error',
+  );
 });
 
 test('validate fails on module that is not an object', () => {
@@ -533,7 +645,10 @@ test('validate fails on missing npcs object', () => {
     scenes: { a: { id: 'a', title: 'A', description: 'd' } },
   };
   const result = jsonParser.validate(module);
-  assert(result.errors.some((e) => e.includes('npcs') || e.includes('NPC')), 'Expected NPC error');
+  assert(
+    result.errors.some((e) => e.includes('npcs') || e.includes('NPC')),
+    'Expected NPC error',
+  );
 });
 
 // ─── parseJSON Errors ───
@@ -883,7 +998,10 @@ id: ref-test
 - [不存在的人](npcs/ghost)
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('undefined NPC')), 'Expected undefined NPC warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('undefined NPC')),
+    'Expected undefined NPC warning',
+  );
 });
 
 test('resolveSceneReferences warns on undefined item in scene', () => {
@@ -901,7 +1019,10 @@ id: ref-test
 - [不存在的物品](items/ghost_item)
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('undefined item')), 'Expected undefined item warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('undefined item')),
+    'Expected undefined item warning',
+  );
 });
 
 test('resolveSceneReferences warns on undefined enemy in combat', () => {
@@ -919,7 +1040,10 @@ id: ref-test
 - [不存在的敌人](ghost_enemy)
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('undefined enemy')), 'Expected undefined enemy warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('undefined enemy')),
+    'Expected undefined enemy warning',
+  );
 });
 
 test('resolveSceneReferences warns on undefined exit target', () => {
@@ -937,7 +1061,10 @@ id: ref-test
 - [未知地点](nowhere)
 `;
   const result = parser.parseMarkdown(md);
-  assert(parser.getWarnings().some((w) => w.includes('undefined scene')), 'Expected undefined scene warning');
+  assert(
+    parser.getWarnings().some((w) => w.includes('undefined scene')),
+    'Expected undefined scene warning',
+  );
 });
 
 // ─── Condition Parsing ───

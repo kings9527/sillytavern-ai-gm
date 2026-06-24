@@ -303,7 +303,10 @@ test('Player HP reaching zero ends combat with defeat', () => {
   tracker.resolveAttack('goblin', 'player_1', { skill: '格斗' });
   Math.random = originalRandom;
 
-  assert(tracker.state.active === false || campaign.player.hp <= 0, 'Expected combat ended or player at 0 HP');
+  assert(
+    tracker.state.active === false || campaign.player.hp <= 0,
+    'Expected combat ended or player at 0 HP',
+  );
 });
 
 test('All enemies defeated ends combat with victory', () => {
@@ -442,7 +445,11 @@ test('resolveEnemyAction handles spell action', () => {
   const tracker = new CombatTracker(campaign);
   tracker.initCombat(['goblin']);
   const goblinInit = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
-  const result = tracker.resolveEnemyAction(goblinInit, { type: 'spell', skill: 'occult_magic', target: 'player_1' });
+  const result = tracker.resolveEnemyAction(goblinInit, {
+    type: 'spell',
+    skill: 'occult_magic',
+    target: 'player_1',
+  });
   assert(result.action === 'skill' || result.log, 'Expected spell resolution');
 });
 
@@ -573,7 +580,9 @@ test('Combat end populates log with victory message', () => {
 
   tracker.checkCombatEnd();
   assert(!tracker.state.active, 'Expected combat inactive');
-  const hasVictory = tracker.state.log.some((l) => l.includes('所有敌人被击败') || l.includes('战斗结束'));
+  const hasVictory = tracker.state.log.some(
+    (l) => l.includes('所有敌人被击败') || l.includes('战斗结束'),
+  );
   assert(hasVictory, 'Expected victory message in log');
 });
 
