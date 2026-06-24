@@ -279,7 +279,7 @@ function handleFailure(reason) {
   // 指数退避: 最大 60 秒
   pollIntervalMs = Math.min(
     MAX_POLL_INTERVAL,
-    5000 * Math.pow(BACKOFF_MULTIPLIER, consecutiveFailures - 1)
+    5000 * Math.pow(BACKOFF_MULTIPLIER, consecutiveFailures - 1),
   );
 
   const status = consecutiveFailures >= 3 ? 'offline' : 'error';

@@ -424,7 +424,7 @@ test('GM prompt handles negative sanity', () => {
 
 test('Scene description handles special characters in transition', () => {
   const pb = new PromptBuilder(baseCampaign);
-  const special = '你推开沉重的木门，\n听到了\"嘎吱\"一声——还有……';
+  const special = '你推开沉重的木门，\n听到了"嘎吱"一声——还有……';
   const prompt = pb.buildSceneDescriptionPrompt('s1', special);
   assert(prompt.content.includes('嘎吱'), 'should preserve special chars');
 });

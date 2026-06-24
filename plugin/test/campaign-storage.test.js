@@ -314,8 +314,8 @@ console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some test
 
 // Cleanup
 cleanup();
-try { fs.unlinkSync(TEST_DB + '_summary'); } catch { }
-try { fs.unlinkSync(TEST_DB + '_clear'); } catch { }
-try { fs.unlinkSync(TEST_DB + '_close'); } catch { }
+try { fs.unlinkSync(TEST_DB + '_summary'); } catch { /* ignore */ }
+try { fs.unlinkSync(TEST_DB + '_clear'); } catch { /* ignore */ }
+try { fs.unlinkSync(TEST_DB + '_close'); } catch { /* ignore */ }
 
 process.exit(failCount > 0 ? 1 : 0);

@@ -645,7 +645,7 @@ testAsync('_sendAction catches error and notifies', async () => {
 
 /* ========== Summary ========== */
 
-console.log(`\n=== Test Summary ===`);
+console.log('\n=== Test Summary ===');
 console.log(`Total: ${passCount + failCount}`);
 console.log(`Passed: ${passCount}`);
 console.log(`Failed: ${failCount}`);

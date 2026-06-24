@@ -546,7 +546,7 @@ async function runTests() {
     assertEqual(result.type, 'event', 'Sanity event should trigger');
     assertTrue(
       result.narration.includes('SAN 检定') || result.narration.includes('你看到可怕的东西'),
-      'Should include sanity check or description'
+      'Should include sanity check or description',
     );
   }
 

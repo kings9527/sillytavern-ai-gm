@@ -459,7 +459,7 @@ await new Promise((r) => setTimeout(r, 50));
 restoreFetch();
 
 // Summary
-console.log(`\n=== LLM Client Extended Test Summary ===`);
+console.log('\n=== LLM Client Extended Test Summary ===');
 console.log(`Total: ${passCount + failCount}`);
 console.log(`Passed: ${passCount}`);
 console.log(`Failed: ${failCount}`);

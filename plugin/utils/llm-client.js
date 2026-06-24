@@ -175,7 +175,7 @@ export class LLMClient {
   async chatJSON(messages, options = {}) {
     const jsonInstruction = options.jsonSchema
       ? `\n\nYou must respond with a single JSON object that conforms to this schema:\n${JSON.stringify(options.jsonSchema, null, 2)}\nDo not include markdown code blocks, explanations, or any text outside the JSON object.`
-      : `\n\nYou must respond with a single JSON object. Do not include markdown code blocks, explanations, or any text outside the JSON object.`;
+      : '\n\nYou must respond with a single JSON object. Do not include markdown code blocks, explanations, or any text outside the JSON object.';
 
     // Append JSON instruction to the last user message, or add a new user message
     const modifiedMessages = messages.map((m, i) => {

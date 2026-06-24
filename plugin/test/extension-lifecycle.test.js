@@ -37,15 +37,15 @@ console.log('--- Static Event Hook Analysis ---');
 const indexSrc = fs.readFileSync(path.join(ROOT, 'index.js'), 'utf-8');
 
 test('index.js binds CHAT_CHANGED event', () => {
-  assert(indexSrc.includes("eventSource.on(event_types.CHAT_CHANGED"), 'Expected CHAT_CHANGED binding');
+  assert(indexSrc.includes('eventSource.on(event_types.CHAT_CHANGED'), 'Expected CHAT_CHANGED binding');
 });
 
 test('index.js binds CHARACTER_MESSAGE_RENDERED event', () => {
-  assert(indexSrc.includes("eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED"), 'Expected CHARACTER_MESSAGE_RENDERED binding');
+  assert(indexSrc.includes('eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED'), 'Expected CHARACTER_MESSAGE_RENDERED binding');
 });
 
 test('index.js binds USER_MESSAGE_RENDERED event', () => {
-  assert(indexSrc.includes("eventSource.on(event_types.USER_MESSAGE_RENDERED"), 'Expected USER_MESSAGE_RENDERED binding');
+  assert(indexSrc.includes('eventSource.on(event_types.USER_MESSAGE_RENDERED'), 'Expected USER_MESSAGE_RENDERED binding');
 });
 
 test('index.js exports init function', () => {
@@ -161,7 +161,7 @@ test('index.js imports all 4 UI modules', () => {
 });
 
 test('index.js imports STChatBridge', () => {
-  assert(indexSrc.includes("import { STChatBridge }"), 'Expected STChatBridge import');
+  assert(indexSrc.includes('import { STChatBridge }'), 'Expected STChatBridge import');
 });
 
 test('index.js has init guard (isInitialized)', () => {

@@ -129,7 +129,7 @@ function renderExits(exits) {
     if (!box) return;
     box.innerHTML = exits.length
         ? exits.map(e =>
-            `<button class="menu_button ${CSS_NS}-exit-btn" data-target="${escapeHtml(e.target)}">${escapeHtml(e.label)}</button>`
+            `<button class="menu_button ${CSS_NS}-exit-btn" data-target="${escapeHtml(e.target)}">${escapeHtml(e.label)}</button>`,
         ).join('')
         : '<span class="${CSS_NS}-empty">没有可见的出口</span>';
 }
@@ -295,5 +295,5 @@ window.AiGmPanel = {
     renderLog: appendLogEntries, 
     appendLog, 
     appendLogEntries, 
-    clearLog 
+    clearLog, 
 };

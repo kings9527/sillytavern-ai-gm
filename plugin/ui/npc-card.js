@@ -126,7 +126,7 @@ function bindNpcEvents(grid) {
       // 点击卡片展开/折叠详情
       card.classList.toggle('expanded');
       document.dispatchEvent(new CustomEvent('ai-gm:npc-select', {
-        detail: { npcId: id, source: 'card' }
+        detail: { npcId: id, source: 'card' },
       }));
     });
   });
@@ -137,7 +137,7 @@ function bindNpcEvents(grid) {
       const action = btn.dataset.action;
       const npcId = btn.dataset.npc;
       document.dispatchEvent(new CustomEvent('ai-gm:npc-action', {
-        detail: { npcId, action, source: 'card' }
+        detail: { npcId, action, source: 'card' },
       }));
     });
   });

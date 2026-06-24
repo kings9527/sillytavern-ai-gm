@@ -35,7 +35,7 @@ const mockContext = {
 
 function getContext() { return mockContext; }
 
-let extensionSettings = {};
+const extensionSettings = {};
 function saveSettingsDebounced() { }
 
 // ===== 设置 JSDOM =====
@@ -107,7 +107,7 @@ ctrl.initGameController('/api/ai-gm', 'event-test');
 
 // 模拟后端 POST 被拦截
 const originalFetch = global.fetch || (() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }));
-let fetchCalls = [];
+const fetchCalls = [];
 
 // 模拟 NPC 动作事件
 document.addEventListener('ai-gm:npc-action', (e) => {

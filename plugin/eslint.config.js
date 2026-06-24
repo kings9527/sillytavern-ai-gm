@@ -46,3 +46,22 @@ export default [
         ...globals.es2024,
       },
     },
+    plugins: {
+      js,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-undef': 'error',
+      'no-redeclare': 'error',
+      'no-dupe-keys': 'error',
+      'no-unreachable': 'error',
+      'no-throw-literal': 'error',
+      'prefer-const': 'warn',
+      'no-var': 'warn',
+      semi: ['error', 'always'],
+      quotes: ['warn', 'single', { avoidEscape: true }],
+      'comma-dangle': ['warn', 'always-multiline'],
+    },
+  },
+];

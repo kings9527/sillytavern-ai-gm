@@ -202,7 +202,7 @@ export class CombatTracker {
     const critical = attackRoll <= 5;
     const fumble = attackRoll >= 96;
 
-    let result = {
+    const result = {
       action: 'attack',
       actor: attacker,
       target,
@@ -273,7 +273,7 @@ export class CombatTracker {
     }
 
     // Add DB
-    let totalDamage = weaponDamage + db.total;
+    const totalDamage = weaponDamage + db.total;
 
     return {
       total: Math.max(1, totalDamage), // Minimum 1 damage

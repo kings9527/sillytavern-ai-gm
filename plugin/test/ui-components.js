@@ -11,10 +11,11 @@ import { dirname, join } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Setup JSDOM
-global.dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
   runScripts: 'dangerously',
   url: 'http://localhost',
 });
+global.dom = dom;
 global.window = dom.window;
 global.document = dom.window.document;
 global.CustomEvent = dom.window.CustomEvent;

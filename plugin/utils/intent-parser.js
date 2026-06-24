@@ -195,7 +195,7 @@ export class IntentParser {
           target,
           { topic, direct_speech: input.match(/^["']/) !== null },
           input,
-          `Pattern match: talk ${target ? 'to ' + target : 'nearby NPC'}`
+          `Pattern match: talk ${target ? 'to ' + target : 'nearby NPC'}`,
         );
       }
     }
@@ -223,7 +223,7 @@ export class IntentParser {
           target,
           { destination: target },
           input,
-          `Pattern match: ${pattern.action} to ${target}`
+          `Pattern match: ${pattern.action} to ${target}`,
         );
       }
     }
@@ -262,7 +262,7 @@ export class IntentParser {
           target,
           { weapon },
           input,
-          `Pattern match: attack ${target || 'target'}`
+          `Pattern match: attack ${target || 'target'}`,
         );
       }
     }
@@ -306,7 +306,7 @@ export class IntentParser {
             target,
             { item, tool: item },
             input,
-            `Pattern match: use ${item} on ${target}`
+            `Pattern match: use ${item} on ${target}`,
           );
         }
 
@@ -329,7 +329,7 @@ export class IntentParser {
           target,
           { skill, broad: !target },
           input,
-          `Pattern match: ${pattern.action} ${target || 'area'}`
+          `Pattern match: ${pattern.action} ${target || 'area'}`,
         );
       }
     }
@@ -375,7 +375,7 @@ export class IntentParser {
           target || item,
           { item, target },
           input,
-          `Pattern match: ${pattern.action} ${item || target || 'item'}`
+          `Pattern match: ${pattern.action} ${item || target || 'item'}`,
         );
       }
     }
@@ -403,7 +403,7 @@ export class IntentParser {
           target,
           { subject: target },
           input,
-          `Pattern match: read/study ${target}`
+          `Pattern match: read/study ${target}`,
         );
       }
     }
@@ -435,7 +435,7 @@ export class IntentParser {
           target,
           {},
           input,
-          `Pattern match: ${pattern.action} ${target}`
+          `Pattern match: ${pattern.action} ${target}`,
         );
       }
     }
@@ -466,7 +466,7 @@ export class IntentParser {
           target,
           { stealth: true, skill },
           input,
-          `Pattern match: ${pattern.action} ${target || ''}`
+          `Pattern match: ${pattern.action} ${target || ''}`,
         );
       }
     }
@@ -491,7 +491,7 @@ export class IntentParser {
           null,
           { spell },
           input,
-          `Pattern match: cast spell ${spell}`
+          `Pattern match: cast spell ${spell}`,
         );
       }
     }
@@ -514,7 +514,7 @@ export class IntentParser {
           null,
           { duration: 'short' },
           input,
-          'Pattern match: rest/recovery'
+          'Pattern match: rest/recovery',
         );
       }
     }
@@ -538,7 +538,7 @@ export class IntentParser {
           destination,
           { destination },
           input,
-          `Pattern match: flee ${destination || 'away'}`
+          `Pattern match: flee ${destination || 'away'}`,
         );
       }
     }
@@ -560,7 +560,7 @@ export class IntentParser {
           null,
           { scope: 'room' },
           input,
-          'Pattern match: look around'
+          'Pattern match: look around',
         );
       }
     }
@@ -590,7 +590,7 @@ export class IntentParser {
           target,
           { target },
           input,
-          `Pattern match: follow ${target}`
+          `Pattern match: follow ${target}`,
         );
       }
     }
@@ -653,7 +653,7 @@ What is the player's intent?`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
-        { temperature: 0.2, maxTokens: 256 }
+        { temperature: 0.2, maxTokens: 256 },
       );
 
       if (result.error) {
@@ -666,7 +666,7 @@ What is the player's intent?`;
         result.target || null,
         result.params || {},
         input,
-        result.reasoning || 'LLM parsed'
+        result.reasoning || 'LLM parsed',
       );
     } catch (error) {
       console.warn('[IntentParser] LLM parse error:', error.message);

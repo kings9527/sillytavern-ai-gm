@@ -246,7 +246,7 @@ test('MOCK_MODULE is exported', () => {
   assert(MOCK_MODULE.id === 'arkham-night', 'Expected mock module export');
 });
 
-console.log(`\n=== Dev Mode Test Summary ===`);
+console.log('\n=== Dev Mode Test Summary ===');
 console.log(`Total: ${passCount + failCount}`);
 console.log(`Passed: ${passCount}`);
 console.log(`Failed: ${failCount}`);

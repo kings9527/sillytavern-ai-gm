@@ -60,16 +60,16 @@ async function testDomMount() {
 
   src = src.replace(
     /import\s+\{\s*eventSource\s*,\s*event_types\s*,\s*saveSettingsDebounced\s*\}\s+from\s+['"][^'"]+['"]\s*;?/,
-    `const eventSource = { on: (type, handler) => { mockEventSource.events[type] = handler; } }; ` +
+    'const eventSource = { on: (type, handler) => { mockEventSource.events[type] = handler; } }; ' +
     `const event_types = ${JSON.stringify(mockEventTypes)}; ` +
-    `const saveSettingsDebounced = () => {};`
+    'const saveSettingsDebounced = () => {};',
   );
 
   src = src.replace(
     /import\s+\{\s*getContext\s*,\s*renderExtensionTemplateAsync\s*,\s*extension_settings\s*\}\s+from\s+['"][^'"]+['"]\s*;?/,
-    `const getContext = () => mockContext; ` +
-    `const renderExtensionTemplateAsync = () => Promise.resolve(''); ` +
-    `const extension_settings = {};`
+    'const getContext = () => mockContext; ' +
+    'const renderExtensionTemplateAsync = () => Promise.resolve(\'\'); ' +
+    'const extension_settings = {};',
   );
 
   // 移除 UI 模块静态导入（在 VM 中不需要实际文件）

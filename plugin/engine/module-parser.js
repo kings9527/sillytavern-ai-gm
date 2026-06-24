@@ -1436,15 +1436,15 @@ export class ModuleParser {
     }
 
     // Flag: flag(has_key), has_key
-    const flagMatch = text.match(/(?:flag|标记)[:\s]*\(?\s*([^\)\s]+)\s*\)?/i);
+    const flagMatch = text.match(/(?:flag|标记)[:\s]*\(?\s*([^)\s]+)\s*\)?/i);
     if (flagMatch) return { type: 'flag', key: flagMatch[1].trim() };
 
     // Item: item(ancient_key), 物品(ancient_key)
-    const itemMatch = text.match(/(?:item|物品)[:\s]*\(?\s*([^\)\s]+)\s*\)?/i);
+    const itemMatch = text.match(/(?:item|物品)[:\s]*\(?\s*([^)\s]+)\s*\)?/i);
     if (itemMatch) return { type: 'item', item_id: itemMatch[1].trim() };
 
     // Clue: clue(ancient_scroll), 线索(ancient_scroll)
-    const clueMatch = text.match(/(?:clue|线索)[:\s]*\(?\s*([^\)\s]+)\s*\)?/i);
+    const clueMatch = text.match(/(?:clue|线索)[:\s]*\(?\s*([^)\s]+)\s*\)?/i);
     if (clueMatch) return { type: 'clue', clue_id: clueMatch[1].trim() };
 
     // Default to flag

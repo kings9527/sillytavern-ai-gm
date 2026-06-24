@@ -102,7 +102,7 @@ function renderScene(scene) {
 
   // 触发氛围切换事件
   document.dispatchEvent(new CustomEvent('ai-gm:atmosphere-change', {
-    detail: { atmosphere: scene.atmosphere, sceneId: scene.id }
+    detail: { atmosphere: scene.atmosphere, sceneId: scene.id },
   }));
 }
 
