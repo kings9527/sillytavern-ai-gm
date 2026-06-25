@@ -200,7 +200,7 @@ console.log('\n--- StateMachine → NPCDecision Chat History ---');
 async function testStateMachineChatHistory() {
   const campaign = structuredClone(testCampaign);
   const gsm = new GameStateMachine(testModule, campaign);
-  const mockLLM = new MockLLMClient({ available: false });
+  // (removed unused: mockLLM)
 
   const chatHistory = '玩家: 你在这里做什么？\nAI: 这不关你的事。\n玩家: 别紧张，我只是想聊聊。';
 

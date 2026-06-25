@@ -14,7 +14,7 @@ import { PromptBuilder } from '../utils/prompt-builder.js';
 /**
  * NPC attitude state machine
  */
-const ATTITUDE_STATES = {
+const _ATTITUDE_STATES = {
   neutral: { hostility: 0, trust_needed: 40, aggression: 20 },
   friendly: { hostility: 0, trust_needed: 60, aggression: 10 },
   hostile: { hostility: 80, trust_needed: 0, aggression: 70 },
@@ -491,7 +491,7 @@ export class NPCDecisionEngine extends NPCDecisionEngineContract {
    * @private
    */
   _attitudeBasedDecision(context) {
-    const { npc, template, situation } = context;
+    const { npc, template } = context;
     const attitude = npc.attitude;
     const role = template.role || 'neutral';
 

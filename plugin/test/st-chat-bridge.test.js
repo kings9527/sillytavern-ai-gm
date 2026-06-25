@@ -8,7 +8,7 @@
 
 import {
   shouldProcessAsGameAction,
-  stripGmPrefix,
+  _stripGmPrefix,
   createMessageCache,
   formatContext,
   makeActionKey,
@@ -166,13 +166,13 @@ test('shouldProcessAsGameAction: edge cases', () => {
   assertEqual(shouldProcessAsGameAction('   ', true), false, 'whitespace');
 });
 
-/* --- stripGmPrefix --- */
+/* --- _stripGmPrefix --- */
 
-test('stripGmPrefix: removes prefix correctly', () => {
-  assertEqual(stripGmPrefix('/gm check room'), 'check room');
-  assertEqual(stripGmPrefix('/gmattack'), 'attack');
-  assertEqual(stripGmPrefix('no prefix'), 'no prefix');
-  assertEqual(stripGmPrefix('/gm  double space'), 'double space');
+test('_stripGmPrefix: removes prefix correctly', () => {
+  assertEqual(_stripGmPrefix('/gm check room'), 'check room');
+  assertEqual(_stripGmPrefix('/gmattack'), 'attack');
+  assertEqual(_stripGmPrefix('no prefix'), 'no prefix');
+  assertEqual(_stripGmPrefix('/gm  double space'), 'double space');
 });
 
 /* --- createMessageCache --- */
@@ -515,7 +515,7 @@ test('Injectable notify', () => {
   let notified = false;
   const bridge = new STChatBridge(gc, {
     deps: {
-      notify: (text, level) => {
+      notify: (_text, _level) => {
         notified = true;
       },
     },
@@ -577,7 +577,7 @@ test('_notify returns undefined without window', () => {
 test('_notify uses toastr when available', () => {
   setupBrowserMocks();
   let called = false;
-  mockToastr.info = (msg, title, opts) => {
+  mockToastr.info = (_msg, _title, _opts) => {
     called = true;
   };
   const gc = createMockGameController();
@@ -658,7 +658,7 @@ testAsync('_sendAction catches error and notifies', async () => {
   let notified = false;
   const bridge = new STChatBridge(gc, {
     deps: {
-      notify: (text, level) => {
+      notify: (_text, _level) => {
         notified = true;
       },
     },

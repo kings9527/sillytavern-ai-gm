@@ -510,7 +510,7 @@ export class IntentParser {
     return null;
   }
 
-  _matchMagic(input, lower, context) {
+  _matchMagic(input, _lower, _context) {
     const magicPatterns = [
       { regex: /^(?:施法|施放|念咒|召唤|仪式|献祭|祈祷|诅咒)(.+)/, action: 'cast' },
       {
@@ -538,7 +538,7 @@ export class IntentParser {
     return null;
   }
 
-  _matchRest(input, lower, context) {
+  _matchRest(input, _lower, _context) {
     const restPatterns = [
       { regex: /^(?:休息|睡觉|恢复|治疗|包扎|坐下|躺下)/, action: 'rest' },
       {
@@ -593,7 +593,7 @@ export class IntentParser {
     return null;
   }
 
-  _matchLook(input, lower, context) {
+  _matchLook(input, _lower, _context) {
     const lookPatterns = [
       { regex: /^(?:环顾|四周|环顾四周)/, action: 'look' },
       { regex: /^(?:look around|look about)\b/i, action: 'look' },
@@ -763,7 +763,7 @@ What is the player's intent?`;
     };
   }
 
-  _findEntity(name, entityMap, entityType) {
+  _findEntity(name, entityMap, _entityType) {
     if (!entityMap || !name) return null;
 
     const lowerName = name.toLowerCase().trim();
@@ -788,7 +788,7 @@ What is the player's intent?`;
    * Find entity by checking if any entity name is contained within the input
    * @private
    */
-  _findEntityByPartial(input, entityMap, entityType) {
+  _findEntityByPartial(input, entityMap, _entityType) {
     if (!entityMap || !input) return null;
     const lowerInput = input.toLowerCase().trim();
 

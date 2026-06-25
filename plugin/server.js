@@ -10,12 +10,12 @@
 import { Router } from 'express';
 import { ModuleParser } from './engine/module-parser.js';
 import { GameStateMachine } from './engine/state-machine.js';
-import { RuleEngine } from './engine/rule-engine.js';
+import {} from './engine/rule-engine.js';
 import { DiceRoller } from './engine/dice.js';
 import { CombatTracker } from './engine/combat-tracker.js';
 import { CampaignStorage } from './storage/campaign.js';
 import { NPCDecisionEngine } from './engine/npc-decision.js';
-import { LLMClient, createLLMClientFromEnv } from './utils/llm-client.js';
+import { createLLMClientFromEnv } from './utils/llm-client.js';
 import { PromptBuilder } from './utils/prompt-builder.js';
 
 const router = Router();
@@ -27,21 +27,21 @@ const loadedModules = new Map();
 // Initialize dice roller
 const dice = new DiceRoller();
 
-// Initialize rule engine
-const rules = new RuleEngine('coc'); // Default to Call of Cthulhu
+// Initialize rule engine (unused until Phase 2)
+// const _rules = new RuleEngine('coc'); // Default to Call of Cthulhu
 
 /**
  * Error handling middleware
  * Wraps async route handlers to catch errors
  */
-const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
+const asyncHandler = (fn) => (req, res, _next) => {
+  Promise.resolve(fn(req, res, _next)).catch(_next);
 };
 
 /**
  * Global error handler for AI-GM routes
  */
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, _next) {
   console.error(`[AI-GM] ${req.method} ${req.path} error:`, err.message);
   res.status(err.status || 500).json({
     success: false,

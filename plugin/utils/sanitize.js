@@ -12,7 +12,7 @@
  */
 export function escapeHtml(text) {
   if (typeof text !== 'string') return String(text);
-  const div = { innerHTML: '' };
+  // (removed unused: div)
   const map = {
     '&': '&amp;',
     '<': '&lt;',

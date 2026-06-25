@@ -18,7 +18,7 @@
 
 import {
   shouldProcessAsGameAction,
-  stripGmPrefix,
+  _stripGmPrefix,
   createMessageCache,
   formatContext,
   makeActionKey,

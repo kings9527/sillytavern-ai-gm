@@ -940,7 +940,7 @@ Rules:
    * @returns {object} Scene transition result
    * @throws {Error} If scene does not exist
    */
-  async transitionTo(sceneId, metadata = {}) {
+  async transitionTo(sceneId, _metadata = {}) {
     const scene = this.module.scenes[sceneId];
     if (!scene) {
       throw new Error(`Scene not found: ${sceneId}`);

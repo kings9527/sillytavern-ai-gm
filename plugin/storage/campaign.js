@@ -399,14 +399,14 @@ export class CampaignStorage {
    * @returns {object} Full campaign log
    */
   getFullCampaignLog(campaignId) {
-    let logs = [];
+    // let _logs = []; // intentionally unused — kept for future structured log output
     let saveCount = 0;
 
     if (this.sqliteEnabled) {
       try {
-        const logStmt = this.db.prepare('SELECT COUNT(*) as count FROM logs WHERE campaign_id = ?');
-        const logRow = logStmt.get(campaignId);
-        logs = { length: logRow?.count || 0 };
+        // (removed unused: logStmt)
+        // const _logRow = logStmt.get(campaignId);
+        // _logs = { length: _logRow?.count || 0 };
 
         const saveStmt = this.db.prepare(
           'SELECT COUNT(*) as count FROM saves WHERE campaign_id = ?',

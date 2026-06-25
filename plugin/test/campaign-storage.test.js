@@ -30,7 +30,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message || 'Assertion failed');
 }
 
-function deepEqual(a, b, message) {
+function _deepEqual(a, b, message) {
   if (JSON.stringify(a) !== JSON.stringify(b)) {
     throw new Error(message || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
   }

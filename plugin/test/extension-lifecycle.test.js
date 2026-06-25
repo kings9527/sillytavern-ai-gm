@@ -259,8 +259,8 @@ global.extension_settings = {};
 global.saveSettingsDebounced = () => {};
 
 // Need to stub module imports for Node.js
-const moduleStubs = new Map();
-const originalResolve = path.resolve;
+// (removed unused: moduleStubs)
+// (removed unused: originalResolve)
 
 // Try to load index.js with stubs — this is tricky because of ESM imports
 // Instead, we test via dynamic import with import maps or just verify the source

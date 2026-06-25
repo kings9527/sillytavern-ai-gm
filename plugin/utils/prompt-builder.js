@@ -97,7 +97,7 @@ Requirements:
     };
   }
 
-  buildCombatNarrationPrompt(action, result) {
+  buildCombatNarrationPrompt(action, _result) {
     return {
       role: 'system',
       content: `Narrate a combat action in dramatic prose.

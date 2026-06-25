@@ -200,7 +200,7 @@ export function shouldProcessAsGameAction(input, autoParse) {
  * @param {string} text
  * @returns {string}
  */
-export function stripGmPrefix(text) {
+export function _stripGmPrefix(text) {
   return text.replace(/^\/gm\s*/, '').trim();
 }
 
@@ -310,7 +310,7 @@ export function createPendingSet(expireMs = 500) {
 export function parseActionInput(rawText, source = 'chat') {
   return {
     type: 'player_input',
-    input: stripGmPrefix(rawText),
+    input: _stripGmPrefix(rawText),
     raw: rawText,
     source,
   };

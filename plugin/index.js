@@ -10,7 +10,7 @@
 // ST 核心模块导入（路径兼容不同 ST 版本安装深度）
 // 实际路径可能因 ST 版本和扩展安装位置而异，这里使用常见路径
 import { eventSource, event_types } from '../../../../script.js';
-import { extensionsMenu, extension_settings, saveSettingsDebounced } from '../../../extensions.js';
+import { extension_settings, saveSettingsDebounced } from '../../../extensions.js';
 
 // AI-GM 子模块加载（浏览器 ESM 通过绝对路径或构建工具解析）
 import './ui/panel.js';

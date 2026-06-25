@@ -482,7 +482,7 @@ test('processAction with item action logs correctly', () => {
   tracker.initCombat(['goblin']);
   forcePlayerFirst(tracker);
 
-  const result = tracker.processAction('player_1', 'item', 'goblin', {});
+  tracker.processAction('player_1', 'item', 'potion', {});
   // processAction returns { ...result, ...getState(), enemy_turns }, so log is overwritten by state.log array
   const lastLog = tracker.state.log[tracker.state.log.length - 1];
   assert(lastLog.includes('使用了物品'), 'Expected 使用了物品 in log');
@@ -494,7 +494,7 @@ test('processAction with default action logs correctly', () => {
   tracker.initCombat(['goblin']);
   forcePlayerFirst(tracker);
 
-  const result = tracker.processAction('player_1', 'dance', 'goblin', {});
+  tracker.processAction('player_1', 'dodge', '');
   const lastLog = tracker.state.log[tracker.state.log.length - 1];
   assert(lastLog.includes('执行了'), 'Expected 执行了 in log');
 });

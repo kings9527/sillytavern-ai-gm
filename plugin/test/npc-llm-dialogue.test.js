@@ -5,7 +5,7 @@
 
 import { NPCDecisionEngine } from '../engine/npc-decision.js';
 import { CombatTracker } from '../engine/combat-tracker.js';
-import { LLMClient } from '../utils/llm-client.js';
+import {} from '../utils/llm-client.js';
 
 // Mock LLM client for testing
 class MockLLMClient {
@@ -18,14 +18,14 @@ class MockLLMClient {
   isAvailable() {
     return this._available;
   }
-  async chat(messages, options) {
+  async chat(_messages, _options) {
     if (this._shouldFail) throw new Error('Mock LLM failure');
     if (this._response) return { content: this._response };
     return {
       content: '{"text": "Mock dialogue", "emotion": "suspicious", "secretRevealed": null}',
     };
   }
-  async chatJSON(messages, options) {
+  async chatJSON(_messages, _options) {
     if (this._shouldFail) throw new Error('Mock LLM failure');
     if (this._jsonResponse) return this._jsonResponse;
     return {
@@ -335,7 +335,7 @@ async function testCombatAI() {
     // Set enemy HP to very low
     combatCampaign.npcs_state.npc1.current_hp = 1;
     const enemy = combat.getState().initiative.find((i) => i.entity_id === 'npc1');
-    const decision = await combat.decideEnemyAction(enemy);
+    // (removed unused: decision)
     // Even with high-confidence LLM attack, we should check if rule-based flee triggers?
     // Actually LLM takes priority if confidence > 0.7. But HP < 20% should trigger rule flee if LLM not available.
     // With LLM high confidence, LLM wins. Let's test without LLM.

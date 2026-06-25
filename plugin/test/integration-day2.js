@@ -7,7 +7,7 @@ const { JSDOM } = require('jsdom');
 const assert = require('assert');
 
 // 模拟 ST 全局依赖
-const mockEventSource = {
+const _mockEventSource = {
   events: {},
   on(event, handler) {
     this.events[event] = this.events[event] || [];
@@ -18,7 +18,7 @@ const mockEventSource = {
   },
 };
 
-const event_types = {
+const _event_types = {
   CHAT_CHANGED: 'chat_changed',
   CHARACTER_MESSAGE_RENDERED: 'character_message_rendered',
   USER_MESSAGE_RENDERED: 'user_message_rendered',
@@ -33,12 +33,12 @@ const mockContext = {
   ],
 };
 
-function getContext() {
+function _getContext() {
   return mockContext;
 }
 
-const extensionSettings = {};
-function saveSettingsDebounced() {}
+// (removed unused: extensionSettings)
+function _saveSettingsDebounced() {}
 
 // ===== 设置 JSDOM =====
 const dom = new JSDOM(
@@ -115,9 +115,9 @@ let capturedAction = null;
 ctrl.initGameController('/api/ai-gm', 'event-test');
 
 // 模拟后端 POST 被拦截
-const originalFetch =
+const _originalFetch =
   global.fetch || (() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }));
-const fetchCalls = [];
+// (removed unused: fetchCalls)
 
 // 模拟 NPC 动作事件
 document.addEventListener('ai-gm:npc-action', (e) => {
@@ -198,7 +198,7 @@ document.addEventListener('ai-gm:ai-message', (e) => {
         syncedState = data.aiGmState;
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // 非结构化消息，忽略
   }
 });

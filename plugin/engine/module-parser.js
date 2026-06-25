@@ -348,7 +348,7 @@ export class ModuleParser {
    * @param {object} module - Partial module object for reference resolution
    * @returns {object} Scenes map
    */
-  extractScenes(body, module) {
+  extractScenes(body, _module) {
     const scenes = {};
 
     // Pattern 1: # Scene: Name or # 场景: Name

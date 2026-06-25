@@ -11,7 +11,7 @@ function createMockLLMClient(responses) {
   let callIndex = 0;
   return {
     isAvailable: () => true,
-    chat: async (messages, options) => {
+    chat: async (_messages, _options) => {
       const response = responses[callIndex++];
       if (response instanceof Error) throw response;
       return response;
@@ -46,7 +46,7 @@ function assertTrue(actual, message) {
   console.error(`    Expected truthy, got: ${actual}`);
 }
 
-function assertObjectEqual(actual, expected, message) {
+function _assertObjectEqual(actual, expected, message) {
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
   if (a === e) {

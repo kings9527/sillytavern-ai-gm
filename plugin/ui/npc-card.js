@@ -138,7 +138,7 @@ function buildNpcCard(npc) {
 /** 绑定 NPC 卡片交互事件 */
 function bindNpcEvents(grid) {
   grid.querySelectorAll(`.${CSS_NS}-card`).forEach((card) => {
-    card.addEventListener('click', (e) => {
+    card.addEventListener('click', (_e) => {
       const id = card.dataset.npcId;
       if (!id) return;
       // 点击卡片展开/折叠详情

@@ -170,7 +170,7 @@ test('Player attack transitions neutral to hostile', async () => {
     },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'player_attack' });
+  // (removed unused: decision)
   const state = campaign.npcs_state.librarian;
   assert(state.attitude === 'hostile', `Expected hostile, got ${state.attitude}`);
   assert(state.fear > 20, 'Expected fear increased');
@@ -196,7 +196,7 @@ test('Player help transitions neutral to friendly', async () => {
     },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'player_help' });
+  // (removed unused: decision)
   const state = campaign.npcs_state.librarian;
   assert(state.attitude === 'friendly', `Expected friendly, got ${state.attitude}`);
   assert(state.trust > 30, 'Expected trust increased');
@@ -222,7 +222,7 @@ test('Player threat transitions neutral to afraid', async () => {
     },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'player_threat' });
+  // (removed unused: decision)
   const state = campaign.npcs_state.librarian;
   assert(state.attitude === 'afraid', `Expected afraid, got ${state.attitude}`);
   assert(state.fear > 20, 'Expected fear increased');
@@ -248,7 +248,7 @@ test('Combat start transitions friendly to hostile', async () => {
     },
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
-  const decision = await engine.decide({ type: 'combat_start' });
+  // (removed unused: decision)
   const state = campaign.npcs_state.librarian;
   assert(state.attitude === 'hostile', `Expected hostile, got ${state.attitude}`);
 });
