@@ -198,7 +198,7 @@ document.addEventListener('ai-gm:ai-message', (e) => {
         syncedState = data.aiGmState;
       }
     }
-  } catch (_err) {
+  } catch {
     // 非结构化消息，忽略
   }
 });
