@@ -386,9 +386,19 @@ test('Template dialogue with no default dialogue', async () => {
 console.log('\n--- Template Dialogue Mood Coverage ---');
 
 const moods = [
-  'calm', 'angry', 'scared', 'curious', 'suspicious',
-  'friendly', 'hostile', 'grateful', 'terrified', 'desperate',
-  'dominant', 'whispering', 'hurt',
+  'calm',
+  'angry',
+  'scared',
+  'curious',
+  'suspicious',
+  'friendly',
+  'hostile',
+  'grateful',
+  'terrified',
+  'desperate',
+  'dominant',
+  'whispering',
+  'hurt',
 ];
 
 for (const mood of moods) {
@@ -827,7 +837,10 @@ test('Attitude transition on combat_end_player_win', async () => {
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   // Force a decision through attitude-based with low confidence situation
   const decision = await engine.decide({ type: 'combat_end_player_win' });
-  assert(campaign.npcs_state.enemy1.attitude === 'afraid', `Expected afraid, got ${campaign.npcs_state.enemy1.attitude}`);
+  assert(
+    campaign.npcs_state.enemy1.attitude === 'afraid',
+    `Expected afraid, got ${campaign.npcs_state.enemy1.attitude}`,
+  );
 });
 
 test('Attitude transition on combat_end_player_lose', async () => {
@@ -850,7 +863,10 @@ test('Attitude transition on combat_end_player_lose', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const decision = await engine.decide({ type: 'combat_end_player_lose' });
-  assert(campaign.npcs_state.enemy1.attitude === 'neutral', `Expected neutral, got ${campaign.npcs_state.enemy1.attitude}`);
+  assert(
+    campaign.npcs_state.enemy1.attitude === 'neutral',
+    `Expected neutral, got ${campaign.npcs_state.enemy1.attitude}`,
+  );
 });
 
 test('No attitude transition for unknown situation type', async () => {
@@ -1054,7 +1070,10 @@ test('Multiple NPCs in same campaign have independent states', async () => {
   const enemyDecision = await enemyEngine.decide({ type: 'player_talk' });
 
   assert(libDecision.action === 'talk', `Expected talk, got ${libDecision.action}`);
-  assert(enemyDecision.action === 'ignore' || enemyDecision.action === 'attack', `Expected hostile action, got ${enemyDecision.action}`);
+  assert(
+    enemyDecision.action === 'ignore' || enemyDecision.action === 'attack',
+    `Expected hostile action, got ${enemyDecision.action}`,
+  );
 
   // States should be independent
   assert(campaign.npcs_state.librarian.attitude === 'neutral', 'Librarian should be neutral');

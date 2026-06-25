@@ -7,14 +7,19 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const eslintJson = JSON.parse(
-  execSync('npx eslint . --ext .js,.jsx --format json 2>/dev/null', { encoding: 'utf8', cwd: process.cwd() })
+  execSync('npx eslint . --ext .js,.jsx --format json 2>/dev/null', {
+    encoding: 'utf8',
+    cwd: process.cwd(),
+  }),
 );
 
 let fixCount = 0;
 
 for (const result of eslintJson) {
   const filePath = result.filePath;
-  const messages = result.messages.filter(m => m.ruleId === 'no-unused-vars' || m.ruleId === 'prefer-const');
+  const messages = result.messages.filter(
+    (m) => m.ruleId === 'no-unused-vars' || m.ruleId === 'prefer-const',
+  );
   if (!messages.length) continue;
 
   let lines = fs.readFileSync(filePath, 'utf8').split('\n');
@@ -59,23 +64,30 @@ for (const result of eslintJson) {
       // Pick the one closest to the column
       let targetIdx = indices[0] ?? -1;
       if (indices.length > 1) {
-        const closest = indices.reduce((a, b) =>
-          Math.abs(b - col) < Math.abs(a - col) ? b : a
-        );
+        const closest = indices.reduce((a, b) => (Math.abs(b - col) < Math.abs(a - col) ? b : a));
         targetIdx = closest;
       }
       if (targetIdx !== -1) {
-        lines[lineIdx] = lineText.substring(0, targetIdx) + '_' + varName + lineText.substring(targetIdx + varName.length);
+        lines[lineIdx] =
+          lineText.substring(0, targetIdx) +
+          '_' +
+          varName +
+          lineText.substring(targetIdx + varName.length);
         fixCount++;
       }
-    } else if (text.includes("' is assigned a value but never used. Allowed unused vars must match /^_/u")) {
+    } else if (
+      text.includes("' is assigned a value but never used. Allowed unused vars must match /^_/u")
+    ) {
       // Extract variable name
       const match = text.match(/'([^']+)' is assigned/);
       if (!match) continue;
       const varName = match[1];
       // Remove the declaration: e.g. "let result = ...;" or "const result = ...;" or "const result;"
       // Remove the whole statement if it's a simple assignment
-      const declRegex = new RegExp(`(\\s*)(const|let|var)\\s+${varName}\\s*(?:=\\s*[^;]*)?;?\\s*$`, 'i');
+      const declRegex = new RegExp(
+        `(\\s*)(const|let|var)\\s+${varName}\\s*(?:=\\s*[^;]*)?;?\\s*$`,
+        'i',
+      );
       if (declRegex.test(lineText)) {
         lines[lineIdx] = lineText.replace(declRegex, '');
         fixCount++;
@@ -90,12 +102,16 @@ for (const result of eslintJson) {
         let targetIdx = indices[0] ?? -1;
         if (indices.length > 1) {
           const closest = indices.reduce((a, b) =>
-            Math.abs(b - (msg.column - 1)) < Math.abs(a - (msg.column - 1)) ? b : a
+            Math.abs(b - (msg.column - 1)) < Math.abs(a - (msg.column - 1)) ? b : a,
           );
           targetIdx = closest;
         }
         if (targetIdx !== -1) {
-          lines[lineIdx] = lineText.substring(0, targetIdx) + '_' + varName + lineText.substring(targetIdx + varName.length);
+          lines[lineIdx] =
+            lineText.substring(0, targetIdx) +
+            '_' +
+            varName +
+            lineText.substring(targetIdx + varName.length);
           fixCount++;
         }
       }

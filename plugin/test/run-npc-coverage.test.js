@@ -4,7 +4,7 @@ async function run() {
   await import('./npc-decision-coverage.test.js');
 }
 
-run().catch(e => {
+run().catch((e) => {
   console.error('Error:', e);
   process.exit(1);
 });
