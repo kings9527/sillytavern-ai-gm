@@ -1215,11 +1215,266 @@ test('buildContext for ally includes help action', () => {
   assert(context.available_actions.includes('heal'), 'Expected heal action');
 });
 
-// Summary
-console.log('\n=== NPC Decision Engine Advanced Test Summary ===');
-console.log(`Total: ${passCount + failCount}`);
-console.log(`Passed: ${passCount}`);
-console.log(`Failed: ${failCount}`);
-console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some tests failed'}`);
+// Async tests for _llmEnhancedDecision coverage
+(async () => {
+  console.log('\n--- LLM Enhanced Decision Coverage ---');
 
-process.exit(failCount > 0 ? 1 : 0);
+  function buildLLMCampaign(npcOverrides = {}) {
+    return {
+      id: 'test_campaign',
+      module_id: 'test_mod',
+      current_scene: 'scene1',
+      player: {
+        name: '调查员',
+        hp: 12,
+        max_hp: 12,
+        sanity: 60,
+        max_sanity: 60,
+        stats: { HP: 12, SAN: 60, STR: 50, DEX: 50, CON: 50, INT: 50, POW: 50 },
+      },
+      npcs_state: {
+        librarian: {
+          id: 'librarian',
+          current_hp: 10,
+          current_san: 50,
+          attitude: 'neutral',
+          is_alive: true,
+          trust: 30,
+          fear: 20,
+          suspicion: 30,
+          known_topics: [],
+          secrets_revealed: [],
+          turns_in_scene: 0,
+          custom_vars: {},
+          ...npcOverrides,
+        },
+      },
+      flags: {},
+      turn: 1,
+      module: {
+        id: 'test_mod',
+        system: 'coc7e',
+        scenes: {
+          scene1: {
+            id: 'scene1',
+            title: '图书馆',
+            description: '书架排列',
+            npcs: ['librarian'],
+            combat: { enabled: false },
+          },
+        },
+        npcs: {
+          librarian: {
+            id: 'librarian',
+            name: '图书管理员',
+            role: 'neutral',
+            personality: '谨慎',
+            hp: 10,
+            sanity: 50,
+          },
+        },
+      },
+    };
+  }
+
+  // 1. LLM returns valid JSON
+  test('LLM returns valid JSON response', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk', player_input: '你好' }, '');
+    const mockLLM = {
+      chat: async () => ({
+        content: '{"action":"talk","confidence":0.75,"reasoning":"测试","mood":"curious","target_id":"player","dialogue_topic":"greeting"}',
+      }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.action === 'talk', 'Expected talk action');
+    assert(decision.llm_enhanced === true, 'Expected llm_enhanced flag');
+    assert(decision.confidence === 0.75, 'Expected confidence 0.75');
+  });
+
+  // 2. LLM returns JSON inside markdown code block
+  test('LLM returns JSON inside markdown code block', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({
+        content: '```json\n{"action":"ignore","confidence":0.6,"reasoning":"忽略","mood":"neutral","target_id":"player"}\n```',
+      }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.action === 'ignore', 'Expected ignore action from markdown JSON');
+    assert(decision.llm_enhanced === true, 'Expected llm_enhanced flag');
+  });
+
+  // 3. LLM returns invalid JSON → parseError → null
+  test('LLM returns invalid JSON falls back to null', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '这不是JSON' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision === null, 'Expected null on invalid JSON');
+  });
+
+  // 4. LLM returns JSON without action field → null
+  test('LLM returns JSON without action returns null', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '{"confidence":0.9}' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision === null, 'Expected null when action missing');
+  });
+
+  // 5. LLM chat() throws error → catch → null
+  test('LLM chat() throws error returns null', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => { throw new Error('Network timeout'); },
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision === null, 'Expected null on LLM error');
+  });
+
+  // 6. LLM returns JSON with NaN confidence → defaults to 0.5
+  test('LLM returns NaN confidence defaults to 0.5', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '{"action":"talk","confidence":"abc"}' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.confidence === 0.5, 'Expected default confidence 0.5');
+  });
+
+  // 7. LLM returns confidence > 1 → clamped to 1
+  test('LLM returns confidence > 1 gets clamped', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '{"action":"talk","confidence":1.5}' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.confidence === 1, 'Expected confidence clamped to 1');
+  });
+
+  // 8. LLM returns confidence < 0 → clamped to 0
+  test('LLM returns confidence < 0 gets clamped', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '{"action":"talk","confidence":-0.5}' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.confidence === 0, 'Expected confidence clamped to 0');
+  });
+
+  // 9. LLM returns JSON with missing fields → defaults applied
+  test('LLM returns JSON with missing fields uses defaults', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    const mockLLM = {
+      chat: async () => ({ content: '{"action":"talk","confidence":0.7}' }),
+    };
+    const decision = await engine._llmEnhancedDecision(context, mockLLM);
+    assert(decision.reasoning === 'LLM reasoning', 'Expected default reasoning');
+    assert(decision.mood === 'neutral', 'Expected default mood');
+    assert(decision.target_id === 'player', 'Expected default target_id');
+    assert(decision.dialogue_topic === null, 'Expected default dialogue_topic null');
+  });
+
+  // 10. chat_history included in prompt
+  test('chat_history is included in LLM prompt', async () => {
+    const campaign = buildLLMCampaign();
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '玩家: 你好\nNPC: 你好');
+    let capturedMessages = null;
+    const mockLLM = {
+      chat: async (messages) => {
+        capturedMessages = messages;
+        return { content: '{"action":"talk","confidence":0.7}' };
+      },
+    };
+    await engine._llmEnhancedDecision(context, mockLLM);
+    const userMsg = capturedMessages.find((m) => m.role === 'user');
+    assert(userMsg.content.includes('Recent conversation'), 'Expected chat history header');
+    assert(userMsg.content.includes('玩家: 你好'), 'Expected chat content in prompt');
+  });
+
+  // 11. template with secrets includes secrets in prompt
+  test('template secrets are included in LLM prompt', async () => {
+    const campaign = buildLLMCampaign();
+    campaign.module.npcs.librarian.secrets = [
+      { keyword: 'cult', clue_id: 'clue_1', reveal_text: '邪教在地下室' },
+    ];
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    let capturedMessages = null;
+    const mockLLM = {
+      chat: async (messages) => {
+        capturedMessages = messages;
+        return { content: '{"action":"talk","confidence":0.7}' };
+      },
+    };
+    await engine._llmEnhancedDecision(context, mockLLM);
+    const sysMsg = capturedMessages.find((m) => m.role === 'system');
+    assert(sysMsg.content.includes('Secrets: cult'), 'Expected secrets in system prompt');
+  });
+
+  // 12. npc with revealed secrets includes them in prompt
+  test('npc revealed secrets are included in LLM prompt', async () => {
+    const campaign = buildLLMCampaign();
+    campaign.npcs_state.librarian.secrets_revealed = ['cult'];
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    let capturedMessages = null;
+    const mockLLM = {
+      chat: async (messages) => {
+        capturedMessages = messages;
+        return { content: '{"action":"talk","confidence":0.7}' };
+      },
+    };
+    await engine._llmEnhancedDecision(context, mockLLM);
+    const sysMsg = capturedMessages.find((m) => m.role === 'system');
+    assert(sysMsg.content.includes('Already revealed: cult'), 'Expected revealed secrets in prompt');
+  });
+
+  // 13. npc with known topics includes them in prompt
+  test('npc known topics are included in LLM prompt', async () => {
+    const campaign = buildLLMCampaign();
+    campaign.npcs_state.librarian.known_topics = ['books', 'magic'];
+    const engine = new NPCDecisionEngine(campaign, 'librarian');
+    const context = engine._buildContext({ type: 'player_talk' }, '');
+    let capturedMessages = null;
+    const mockLLM = {
+      chat: async (messages) => {
+        capturedMessages = messages;
+        return { content: '{"action":"talk","confidence":0.7}' };
+      },
+    };
+    await engine._llmEnhancedDecision(context, mockLLM);
+    const sysMsg = capturedMessages.find((m) => m.role === 'system');
+    assert(sysMsg.content.includes('Known topics: books, magic'), 'Expected known topics in prompt');
+  });
+
+  // Summary
+  console.log('\n=== NPC Decision Engine Advanced Test Summary ===');
+  console.log(`Total: ${passCount + failCount}`);
+  console.log(`Passed: ${passCount}`);
+  console.log(`Failed: ${failCount}`);
+  console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some tests failed'}`);
+
+  process.exit(failCount > 0 ? 1 : 0);
+})();
