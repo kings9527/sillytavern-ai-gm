@@ -39,7 +39,7 @@ for (const testFile of tests) {
   try {
     execSync(`node "${testPath}"`, { stdio: 'inherit', cwd: join(__dirname, '..') });
     totalPass++;
-  } catch (_e) {
+  } catch {
     totalFail++;
     failedSuites.push(testFile);
   }

@@ -674,7 +674,7 @@ test('Constructor initializes NPC state from template', () => {
   const campaign = buildCampaign();
   // No npcs_state, should auto-create from template
   delete campaign.npcs_state;
-  const engine = new NPCDecisionEngine(campaign, 'librarian');
+  const _engine = new NPCDecisionEngine(campaign, 'librarian');
   assert(campaign.npcs_state.librarian, 'Expected NPC state created');
   assert(campaign.npcs_state.librarian.current_hp === 10, 'Expected HP from template');
   assert(campaign.npcs_state.librarian.attitude === 'neutral', 'Expected attitude from template');
@@ -836,7 +836,7 @@ test('Attitude transition on combat_end_player_win', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   // Force a decision through attitude-based with low confidence situation
-  const decision = await engine.decide({ type: 'combat_end_player_win' });
+  const _decision = await engine.decide({ type: 'combat_end_player_win' });
   assert(
     campaign.npcs_state.enemy1.attitude === 'afraid',
     `Expected afraid, got ${campaign.npcs_state.enemy1.attitude}`,
@@ -862,7 +862,7 @@ test('Attitude transition on combat_end_player_lose', async () => {
     },
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
-  const decision = await engine.decide({ type: 'combat_end_player_lose' });
+  const _decision = await engine.decide({ type: 'combat_end_player_lose' });
   assert(
     campaign.npcs_state.enemy1.attitude === 'neutral',
     `Expected neutral, got ${campaign.npcs_state.enemy1.attitude}`,

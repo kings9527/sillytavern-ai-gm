@@ -29,7 +29,7 @@ function deepEqual(a, b, message) {
   }
 }
 
-let _originalFetch;
+const _originalFetch = global.fetch;
 function mockFetch(response) {
   global.fetch = async () => ({
     ok: true,
@@ -96,7 +96,6 @@ test('_extractJSON returns error object for invalid JSON', () => {
 // --- chatJSON ---
 console.log('\n--- chatJSON ---');
 
-_originalFetch = global.fetch;
 
 test('chatJSON appends JSON instruction to last user message', async () => {
   mockFetch({
@@ -315,7 +314,7 @@ test('chat does not retry on 4xx client error', async () => {
   let threw = false;
   try {
     await c.chat([{ role: 'user', content: 'hi' }]);
-  } catch (_e) {
+  } catch {
     threw = true;
   }
   assert(threw, 'Expected throw');

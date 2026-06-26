@@ -125,7 +125,7 @@ test('parseMarkdown throws on null', () => {
   let threw = false;
   try {
     parser.parseMarkdown(null);
-  } catch (_e) {
+  } catch {
     threw = true;
   }
   assert(threw, 'Expected throw on null');
@@ -138,7 +138,7 @@ id: no-scenes
 
 This is just a description without any scenes.
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('No scenes')),
@@ -156,7 +156,7 @@ id: no-npcs
 
 No NPCs here.
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('No NPCs')),
@@ -999,7 +999,7 @@ id: ref-test
 ## NPC
 - [不存在的人](npcs/ghost)
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('undefined NPC')),
@@ -1021,7 +1021,7 @@ id: ref-test
 ## 物品
 - [不存在的物品](items/ghost_item)
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('undefined item')),
@@ -1043,7 +1043,7 @@ id: ref-test
 ## 战斗
 - [不存在的敌人](ghost_enemy)
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('undefined enemy')),
@@ -1065,7 +1065,7 @@ id: ref-test
 ## 出口
 - [未知地点](nowhere)
 `;
-  const result = parser.parseMarkdown(md);
+  const _result = parser.parseMarkdown(md);
   // result used
   assert(
     parser.getWarnings().some((w) => w.includes('undefined scene')),

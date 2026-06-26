@@ -2425,7 +2425,7 @@ test('Constructor warns when NPC missing name', () => {
 test('Constructor initializes NPC state from template', () => {
   const campaign = buildCampaign();
   delete campaign.npcs_state;
-  const engine = new NPCDecisionEngine(campaign, 'librarian');
+  const _engine = new NPCDecisionEngine(campaign, 'librarian');
   assert(campaign.npcs_state.librarian);
   assert(campaign.npcs_state.librarian.current_hp === 10);
   assert(campaign.npcs_state.librarian.attitude === 'neutral');
@@ -2496,7 +2496,7 @@ test('Multiple NPCs in same campaign have independent states', async () => {
   const librarianEngine = new NPCDecisionEngine(campaign, 'librarian');
   const enemyEngine = new NPCDecisionEngine(campaign, 'enemy1');
   const libDecision = await librarianEngine.decide({ type: 'player_talk' });
-  const enemyDecision = await enemyEngine.decide({ type: 'player_talk' });
+  const _enemyDecision = await enemyEngine.decide({ type: 'player_talk' });
   assert(libDecision.action === 'talk');
   assert(campaign.npcs_state.librarian.attitude === 'neutral');
 });

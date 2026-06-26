@@ -334,7 +334,7 @@ async function testCombatAI() {
     combat.initCombat(['npc1']);
     // Set enemy HP to very low
     combatCampaign.npcs_state.npc1.current_hp = 1;
-    const enemy = combat.getState().initiative.find((i) => i.entity_id === 'npc1');
+    const _enemy = combat.getState().initiative.find((i) => i.entity_id === 'npc1');
     // (removed unused: decision)
     // Even with high-confidence LLM attack, we should check if rule-based flee triggers?
     // Actually LLM takes priority if confidence > 0.7. But HP < 20% should trigger rule flee if LLM not available.
