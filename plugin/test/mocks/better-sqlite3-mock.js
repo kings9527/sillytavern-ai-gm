@@ -30,7 +30,7 @@ class MockStatement {
   _parse(sql) {
     // Very simple SQL parser for our known queries
     const upper = sql.toUpperCase();
-    
+
     if (upper.startsWith('CREATE TABLE')) {
       return { type: 'CREATE_TABLE', sql };
     }
@@ -158,7 +158,7 @@ export default class MockDatabase {
     // ON CONFLICT(id) DO UPDATE SET ...
     if (sql.includes('campaigns')) {
       const id = params[0];
-      const existing = this.tables.campaigns?.find(r => r.id === id);
+      const existing = this.tables.campaigns?.find((r) => r.id === id);
       if (existing) {
         existing.module_id = params[1];
         existing.player_name = params[2];
@@ -181,7 +181,9 @@ export default class MockDatabase {
       const campaign_id = params[0];
       const slot = params[1];
       this.tables.saves = this.tables.saves || [];
-      const idx = this.tables.saves.findIndex(r => r.campaign_id === campaign_id && r.slot === slot);
+      const idx = this.tables.saves.findIndex(
+        (r) => r.campaign_id === campaign_id && r.slot === slot,
+      );
       const row = {
         campaign_id,
         slot,
@@ -231,7 +233,7 @@ export default class MockDatabase {
       // DELETE FROM campaigns WHERE id = ?
       const id = params[0];
       const before = this.tables.campaigns.length;
-      this.tables.campaigns = this.tables.campaigns.filter(r => r.id !== id);
+      this.tables.campaigns = this.tables.campaigns.filter((r) => r.id !== id);
       count = before - this.tables.campaigns.length;
     } else if (table === 'saves') {
       // DELETE FROM saves WHERE campaign_id = ? AND slot = ?
@@ -239,16 +241,18 @@ export default class MockDatabase {
       const slot = params[1];
       const before = this.tables.saves.length;
       if (slot !== undefined) {
-        this.tables.saves = this.tables.saves.filter(r => !(r.campaign_id === campaign_id && r.slot === slot));
+        this.tables.saves = this.tables.saves.filter(
+          (r) => !(r.campaign_id === campaign_id && r.slot === slot),
+        );
       } else {
-        this.tables.saves = this.tables.saves.filter(r => r.campaign_id !== campaign_id);
+        this.tables.saves = this.tables.saves.filter((r) => r.campaign_id !== campaign_id);
       }
       count = before - this.tables.saves.length;
     } else if (table === 'logs') {
       // DELETE FROM logs WHERE campaign_id = ?
       const campaign_id = params[0];
       const before = this.tables.logs.length;
-      this.tables.logs = this.tables.logs.filter(r => r.campaign_id !== campaign_id);
+      this.tables.logs = this.tables.logs.filter((r) => r.campaign_id !== campaign_id);
       count = before - this.tables.logs.length;
     }
     return { changes: count, lastInsertRowid: 0 };
@@ -258,12 +262,14 @@ export default class MockDatabase {
     if (!this.tables[table]) return null;
     if (table === 'campaigns') {
       const id = params[0];
-      return this.tables.campaigns.find(r => r.id === id) || null;
+      return this.tables.campaigns.find((r) => r.id === id) || null;
     }
     if (table === 'saves') {
       const campaign_id = params[0];
       const slot = params[1];
-      return this.tables.saves.find(r => r.campaign_id === campaign_id && r.slot === slot) || null;
+      return (
+        this.tables.saves.find((r) => r.campaign_id === campaign_id && r.slot === slot) || null
+      );
     }
     return null;
   }
@@ -273,7 +279,7 @@ export default class MockDatabase {
     if (table === 'logs') {
       const campaign_id = params[0];
       const limit = params[1] || 100;
-      const filtered = this.tables.logs.filter(r => r.campaign_id === campaign_id);
+      const filtered = this.tables.logs.filter((r) => r.campaign_id === campaign_id);
       // ORDER BY timestamp DESC, then by id DESC for stable ordering
       const sorted = [...filtered].sort((a, b) => {
         const dt = new Date(b.timestamp) - new Date(a.timestamp);
@@ -285,7 +291,7 @@ export default class MockDatabase {
     if (table === 'saves') {
       const campaign_id = params[0];
       return this.tables.saves
-        .filter(r => r.campaign_id === campaign_id)
+        .filter((r) => r.campaign_id === campaign_id)
         .sort((a, b) => a.slot - b.slot);
     }
     return [];
@@ -295,7 +301,7 @@ export default class MockDatabase {
     if (!this.tables[table]) return { count: 0 };
     if (table === 'saves') {
       const campaign_id = params[0];
-      return { count: this.tables.saves.filter(r => r.campaign_id === campaign_id).length };
+      return { count: this.tables.saves.filter((r) => r.campaign_id === campaign_id).length };
     }
     return { count: 0 };
   }

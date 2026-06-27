@@ -1284,7 +1284,8 @@ test('buildContext for ally includes help action', () => {
     const context = engine._buildContext({ type: 'player_talk', player_input: '你好' }, '');
     const mockLLM = {
       chat: async () => ({
-        content: '{"action":"talk","confidence":0.75,"reasoning":"测试","mood":"curious","target_id":"player","dialogue_topic":"greeting"}',
+        content:
+          '{"action":"talk","confidence":0.75,"reasoning":"测试","mood":"curious","target_id":"player","dialogue_topic":"greeting"}',
       }),
     };
     const decision = await engine._llmEnhancedDecision(context, mockLLM);
@@ -1300,7 +1301,8 @@ test('buildContext for ally includes help action', () => {
     const context = engine._buildContext({ type: 'player_talk' }, '');
     const mockLLM = {
       chat: async () => ({
-        content: '```json\n{"action":"ignore","confidence":0.6,"reasoning":"忽略","mood":"neutral","target_id":"player"}\n```',
+        content:
+          '```json\n{"action":"ignore","confidence":0.6,"reasoning":"忽略","mood":"neutral","target_id":"player"}\n```',
       }),
     };
     const decision = await engine._llmEnhancedDecision(context, mockLLM);
@@ -1338,7 +1340,9 @@ test('buildContext for ally includes help action', () => {
     const engine = new NPCDecisionEngine(campaign, 'librarian');
     const context = engine._buildContext({ type: 'player_talk' }, '');
     const mockLLM = {
-      chat: async () => { throw new Error('Network timeout'); },
+      chat: async () => {
+        throw new Error('Network timeout');
+      },
     };
     const decision = await engine._llmEnhancedDecision(context, mockLLM);
     assert(decision === null, 'Expected null on LLM error');
@@ -1448,7 +1452,10 @@ test('buildContext for ally includes help action', () => {
     };
     await engine._llmEnhancedDecision(context, mockLLM);
     const sysMsg = capturedMessages.find((m) => m.role === 'system');
-    assert(sysMsg.content.includes('Already revealed: cult'), 'Expected revealed secrets in prompt');
+    assert(
+      sysMsg.content.includes('Already revealed: cult'),
+      'Expected revealed secrets in prompt',
+    );
   });
 
   // 13. npc with known topics includes them in prompt
@@ -1466,7 +1473,10 @@ test('buildContext for ally includes help action', () => {
     };
     await engine._llmEnhancedDecision(context, mockLLM);
     const sysMsg = capturedMessages.find((m) => m.role === 'system');
-    assert(sysMsg.content.includes('Known topics: books, magic'), 'Expected known topics in prompt');
+    assert(
+      sysMsg.content.includes('Known topics: books, magic'),
+      'Expected known topics in prompt',
+    );
   });
 
   // Summary

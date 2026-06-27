@@ -96,7 +96,6 @@ test('_extractJSON returns error object for invalid JSON', () => {
 // --- chatJSON ---
 console.log('\n--- chatJSON ---');
 
-
 test('chatJSON appends JSON instruction to last user message', async () => {
   mockFetch({
     choices: [{ message: { content: '{"result":"ok"}' } }],
