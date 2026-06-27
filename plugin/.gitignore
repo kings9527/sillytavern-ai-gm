@@ -10,6 +10,7 @@ test/*.db-wal
 
 # Coverage reports
 coverage/
+coverage-summary/
 .coverage/
 
 # IDE
