@@ -220,7 +220,7 @@ export default class MockDatabase {
     return { changes: 0, lastInsertRowid: 0 };
   }
 
-  _update(table, sql, params) {
+  _update(_table, _sql, _params) {
     return { changes: 0, lastInsertRowid: 0 };
   }
 
