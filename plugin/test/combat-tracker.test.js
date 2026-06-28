@@ -7,16 +7,19 @@ import { CombatTracker } from '../engine/combat-tracker.js';
 
 let passCount = 0;
 let failCount = 0;
+let testQueue = Promise.resolve();
 
 function test(name, fn) {
-  try {
-    fn();
-    console.log(`✅ ${name}`);
-    passCount++;
-  } catch (e) {
-    console.error(`❌ ${name}: ${e.message}`);
-    failCount++;
-  }
+  testQueue = testQueue.then(async () => {
+    try {
+      await fn();
+      console.log(`✅ ${name}`);
+      passCount++;
+    } catch (e) {
+      console.error(`❌ ${name}: ${e.message}`);
+      failCount++;
+    }
+  });
 }
 
 function assert(condition, message) {
@@ -621,11 +624,174 @@ test('checkCombatEnd does nothing when already inactive', () => {
   assert(true, 'Expected no error');
 });
 
-// Summary
-console.log('\n=== Test Summary ===');
-console.log(`Total: ${passCount + failCount}`);
-console.log(`Passed: ${passCount}`);
-console.log(`Failed: ${failCount}`);
-console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some tests failed'}`);
+// --- resolveEnemyAction: attack & flee cases ---
 
-process.exit(failCount > 0 ? 1 : 0);
+test('resolveEnemyAction handles attack action', () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  forcePlayerFirst(tracker);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = tracker.resolveEnemyAction(enemy, { type: 'attack', target: 'player_1', skill: '格斗' });
+  assert(result.action === 'attack', 'Expected attack action');
+  assert(result.actor === 'goblin', 'Expected goblin as actor');
+});
+
+test('resolveEnemyAction handles flee action', () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = tracker.resolveEnemyAction(enemy, { type: 'flee', target: 'player_1' });
+  assert(result.action === 'flee', 'Expected flee action');
+  assert(result.actor === 'goblin', 'Expected goblin as actor');
+});
+
+// --- processEnemyAutoTurn ---
+
+test('processEnemyAutoTurn processes enemy turn and advances', async () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  // Force goblin to go first
+  tracker.state.initiative.sort((a, b) => (a.entity_id === 'goblin' ? -1 : 1));
+  tracker.state.current_turn_index = 0;
+  tracker.state.current_turn = tracker.state.initiative[0].entity_id;
+
+  const results = await tracker.processEnemyAutoTurn();
+  assert(Array.isArray(results), 'Expected array result');
+  assert(results.length >= 1, 'Expected at least one enemy action');
+  assert(tracker.state.log.some((l) => l.includes('哥布林')), 'Expected 哥布林 action in log');
+});
+
+test('processEnemyAutoTurn returns empty when player turn', async () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  forcePlayerFirst(tracker);
+
+  const results = await tracker.processEnemyAutoTurn();
+  assert(Array.isArray(results), 'Expected array result');
+  assert(results.length === 0, 'Expected no enemy actions on player turn');
+});
+
+test('processEnemyAutoTurn returns empty when combat inactive', async () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  tracker.state.active = false;
+
+  const results = await tracker.processEnemyAutoTurn();
+  assert(Array.isArray(results), 'Expected array result');
+  assert(results.length === 0, 'Expected no actions when combat inactive');
+});
+
+// --- decideEnemyAction LLM path ---
+
+function createMockLLM(responses) {
+  let idx = 0;
+  return {
+    isAvailable: () => true,
+    chat: async () => {
+      const r = responses[idx++];
+      if (r instanceof Error) throw r;
+      return r;
+    },
+  };
+}
+
+test('decideEnemyAction uses LLM when confident', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([
+    { content: '{"action":"spell","skill":"fireball","target":"player_1","confidence":0.95,"reasoning":"test"}' },
+  ]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const decision = await tracker.decideEnemyAction(enemy);
+  assert(decision.type === 'spell', 'Expected spell from LLM decision');
+  assert(decision.llm_enhanced === true, 'Expected llm_enhanced flag');
+  assert(decision.llm_confidence === 0.95, 'Expected confidence preserved');
+});
+
+test('decideEnemyAction falls back to rules when LLM confidence low', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([
+    { content: '{"action":"attack","target":"player_1","confidence":0.3}' },
+  ]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const decision = await tracker.decideEnemyAction(enemy);
+  assert(decision.type === 'attack', 'Expected rule-based fallback attack');
+  assert(decision.llm_enhanced !== true, 'Expected no llm_enhanced flag');
+});
+
+test('decideEnemyAction falls back to rules when LLM throws', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([new Error('LLM timeout')]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const decision = await tracker.decideEnemyAction(enemy);
+  assert(decision.type === 'attack', 'Expected rule-based fallback after LLM error');
+});
+
+test('_llmEnemyDecision returns null for non-JSON response', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([{ content: 'not json at all' }]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = await tracker._llmEnemyDecision(enemy, tracker.state, mockLLM);
+  assert(result === null, 'Expected null for non-JSON response');
+});
+
+test('_llmEnemyDecision returns null for JSON without action', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([{ content: '{"confidence":0.9}' }]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = await tracker._llmEnemyDecision(enemy, tracker.state, mockLLM);
+  assert(result === null, 'Expected null when action is missing');
+});
+
+test('_llmEnemyDecision clamps out-of-range confidence', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([{ content: '{"action":"attack","confidence":1.5}' }]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = await tracker._llmEnemyDecision(enemy, tracker.state, mockLLM);
+  assert(result.confidence === 1.0, 'Expected confidence clamped to 1.0');
+});
+
+test('_llmEnemyDecision clamps negative confidence', async () => {
+  const campaign = makeCampaign();
+  const mockLLM = createMockLLM([{ content: '{"action":"attack","confidence":-0.5}' }]);
+  const tracker = new CombatTracker(campaign, mockLLM);
+  tracker.initCombat(['goblin']);
+
+  const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
+  const result = await tracker._llmEnemyDecision(enemy, tracker.state, mockLLM);
+  assert(result.confidence === 0, 'Expected confidence clamped to 0');
+});
+
+// Await all tests and print summary
+testQueue.then(() => {
+  console.log('\n=== Test Summary ===');
+  console.log(`Total: ${passCount + failCount}`);
+  console.log(`Passed: ${passCount}`);
+  console.log(`Failed: ${failCount}`);
+  console.log(`Status: ${failCount === 0 ? '✅ All tests passed' : '❌ Some tests failed'}`);
+  process.exit(failCount > 0 ? 1 : 0);
+});
