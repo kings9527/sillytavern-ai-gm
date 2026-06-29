@@ -656,7 +656,7 @@ test('processEnemyAutoTurn processes enemy turn and advances', async () => {
   const tracker = new CombatTracker(campaign);
   tracker.initCombat(['goblin']);
   // Force goblin to go first
-  tracker.state.initiative.sort((a, b) => (a.entity_id === 'goblin' ? -1 : 1));
+  tracker.state.initiative.sort((a, _b) => (a.entity_id === 'goblin' ? -1 : 1));
   tracker.state.current_turn_index = 0;
   tracker.state.current_turn = tracker.state.initiative[0].entity_id;
 
