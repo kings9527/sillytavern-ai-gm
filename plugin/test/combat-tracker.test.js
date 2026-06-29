@@ -633,7 +633,11 @@ test('resolveEnemyAction handles attack action', () => {
   forcePlayerFirst(tracker);
 
   const enemy = tracker.state.initiative.find((i) => i.entity_id === 'goblin');
-  const result = tracker.resolveEnemyAction(enemy, { type: 'attack', target: 'player_1', skill: '格斗' });
+  const result = tracker.resolveEnemyAction(enemy, {
+    type: 'attack',
+    target: 'player_1',
+    skill: '格斗',
+  });
   assert(result.action === 'attack', 'Expected attack action');
   assert(result.actor === 'goblin', 'Expected goblin as actor');
 });
@@ -663,7 +667,10 @@ test('processEnemyAutoTurn processes enemy turn and advances', async () => {
   const results = await tracker.processEnemyAutoTurn();
   assert(Array.isArray(results), 'Expected array result');
   assert(results.length >= 1, 'Expected at least one enemy action');
-  assert(tracker.state.log.some((l) => l.includes('哥布林')), 'Expected 哥布林 action in log');
+  assert(
+    tracker.state.log.some((l) => l.includes('哥布林')),
+    'Expected 哥布林 action in log',
+  );
 });
 
 test('processEnemyAutoTurn returns empty when player turn', async () => {
@@ -705,7 +712,10 @@ function createMockLLM(responses) {
 test('decideEnemyAction uses LLM when confident', async () => {
   const campaign = makeCampaign();
   const mockLLM = createMockLLM([
-    { content: '{"action":"spell","skill":"fireball","target":"player_1","confidence":0.95,"reasoning":"test"}' },
+    {
+      content:
+        '{"action":"spell","skill":"fireball","target":"player_1","confidence":0.95,"reasoning":"test"}',
+    },
   ]);
   const tracker = new CombatTracker(campaign, mockLLM);
   tracker.initCombat(['goblin']);
@@ -805,7 +815,10 @@ test('processAction with flee action ends combat', () => {
 
   assert(result.success === true, 'Expected flee success');
   assert(tracker.state.active === false, 'Expected combat ended');
-  assert(tracker.state.log.some((l) => l.includes('逃跑')), 'Expected 逃跑 in log');
+  assert(
+    tracker.state.log.some((l) => l.includes('逃跑')),
+    'Expected 逃跑 in log',
+  );
 });
 
 test('processAction with skill action logs correctly', () => {
@@ -836,7 +849,10 @@ test('checkCombatEnd ends combat when player is dead but enemies alive', () => {
   campaign.player.hp = 0;
   tracker.checkCombatEnd();
   assert(tracker.state.active === false, 'Expected combat ended');
-  assert(tracker.state.log.some((l) => l.includes('你倒下了')), 'Expected player death message');
+  assert(
+    tracker.state.log.some((l) => l.includes('你倒下了')),
+    'Expected player death message',
+  );
 });
 
 // Await all tests and print summary
