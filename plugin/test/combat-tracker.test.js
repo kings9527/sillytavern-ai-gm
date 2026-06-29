@@ -786,6 +786,59 @@ test('_llmEnemyDecision clamps negative confidence', async () => {
   assert(result.confidence === 0, 'Expected confidence clamped to 0');
 });
 
+// --- processAction Branches ---
+
+console.log('\n--- processAction Branches ---');
+
+test('processAction with flee action ends combat', () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  forcePlayerFirst(tracker);
+
+  const originalRandom = Math.random;
+  Math.random = () => 0.01; // flee success
+
+  const result = tracker.processAction('player_1', 'flee', '', {});
+
+  Math.random = originalRandom;
+
+  assert(result.success === true, 'Expected flee success');
+  assert(tracker.state.active === false, 'Expected combat ended');
+  assert(tracker.state.log.some((l) => l.includes('逃跑')), 'Expected 逃跑 in log');
+});
+
+test('processAction with skill action logs correctly', () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  forcePlayerFirst(tracker);
+
+  const originalRandom = Math.random;
+  Math.random = () => 0.01; // skill success
+
+  tracker.processAction('player_1', 'skill', 'goblin', { skill: '闪避' });
+
+  Math.random = originalRandom;
+
+  const lastLog = tracker.state.log[tracker.state.log.length - 1];
+  assert(lastLog.includes('闪避'), 'Expected 闪避 in log');
+});
+
+// --- checkCombatEnd Player Death ---
+
+console.log('\n--- checkCombatEnd Player Death ---');
+
+test('checkCombatEnd ends combat when player is dead but enemies alive', () => {
+  const campaign = makeCampaign();
+  const tracker = new CombatTracker(campaign);
+  tracker.initCombat(['goblin']);
+  campaign.player.hp = 0;
+  tracker.checkCombatEnd();
+  assert(tracker.state.active === false, 'Expected combat ended');
+  assert(tracker.state.log.some((l) => l.includes('你倒下了')), 'Expected player death message');
+});
+
 // Await all tests and print summary
 testQueue.then(() => {
   console.log('\n=== Test Summary ===');
