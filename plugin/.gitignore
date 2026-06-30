@@ -28,3 +28,6 @@ build/
 # Environment
 .env
 .env.local
+
+# Memory notes (cron artifacts)
+memory/

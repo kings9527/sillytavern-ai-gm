@@ -17,6 +17,8 @@ const tests = [
   'ui-integration.js',
   'campaign-storage.test.js',
   'npc-decision-advanced.test.js',
+  'npc-decision-coverage.test.js',
+  'npc-decision-round3.test.js',
   'extension-lifecycle.test.js',
   'state-machine-intent.test.js',
   'st-chat-bridge.test.js',
