@@ -485,10 +485,7 @@ await test('npc revealed secrets included in LLM prompt', async () => {
   };
   await engine._llmEnhancedDecision(context, mockLLM);
   const sysMsg = capturedMessages.find((m) => m.role === 'system');
-  assert(
-    sysMsg.content.includes('Already revealed: cult'),
-    'Expected revealed secrets in prompt',
-  );
+  assert(sysMsg.content.includes('Already revealed: cult'), 'Expected revealed secrets in prompt');
 });
 
 await test('npc known topics included in LLM prompt', async () => {
@@ -520,10 +517,7 @@ await test('npc known topics included in LLM prompt', async () => {
   };
   await engine._llmEnhancedDecision(context, mockLLM);
   const sysMsg = capturedMessages.find((m) => m.role === 'system');
-  assert(
-    sysMsg.content.includes('Known topics: books, magic'),
-    'Expected known topics in prompt',
-  );
+  assert(sysMsg.content.includes('Known topics: books, magic'), 'Expected known topics in prompt');
 });
 
 // =============================================================================
@@ -816,7 +810,10 @@ await test('Template dialogue hostile closing (line 872)', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const result = await engine.generateDialogue('测试', 'hostile', null);
-  assert(result.text.includes('充满敌意'), `Expected hostile closing (covers line 872), got ${result.text}`);
+  assert(
+    result.text.includes('充满敌意'),
+    `Expected hostile closing (covers line 872), got ${result.text}`,
+  );
 });
 
 await test('Template dialogue hostile_alerted closing (line 872)', async () => {
@@ -839,7 +836,10 @@ await test('Template dialogue hostile_alerted closing (line 872)', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const result = await engine.generateDialogue('测试', 'hostile', null);
-  assert(result.text.includes('充满敌意'), `Expected hostile_alerted closing (covers line 872), got ${result.text}`);
+  assert(
+    result.text.includes('充满敌意'),
+    `Expected hostile_alerted closing (covers line 872), got ${result.text}`,
+  );
 });
 
 await test('Template dialogue afraid closing (line 874)', async () => {
@@ -862,7 +862,10 @@ await test('Template dialogue afraid closing (line 874)', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const result = await engine.generateDialogue('测试', 'scared', null);
-  assert(result.text.includes('颤抖'), `Expected afraid closing (covers line 874), got ${result.text}`);
+  assert(
+    result.text.includes('颤抖'),
+    `Expected afraid closing (covers line 874), got ${result.text}`,
+  );
 });
 
 // =============================================================================
@@ -890,7 +893,10 @@ await test('updateState auto-corrects to hostile when trust < 20 (lines 926-927)
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'talk' }, {});
-  assert(updated.attitude === 'hostile', `Expected hostile from low trust (covers lines 926-927), got ${updated.attitude}`);
+  assert(
+    updated.attitude === 'hostile',
+    `Expected hostile from low trust (covers lines 926-927), got ${updated.attitude}`,
+  );
 });
 
 await test('updateState does not override hostile when trust < 20', async () => {
@@ -990,7 +996,10 @@ await test('_defaultFallback Boss role sets special_attack (lines 666-668)', asy
   const engine = new NPCDecisionEngine(campaign, 'boss');
   const context = engine._buildContext({ type: 'idle' });
   const decision = engine._defaultFallback(context);
-  assert(decision.action === 'special_attack', `Expected special_attack for Boss role, got ${decision.action}`);
+  assert(
+    decision.action === 'special_attack',
+    `Expected special_attack for Boss role, got ${decision.action}`,
+  );
   assert(decision.mood === 'dominant', `Expected dominant mood, got ${decision.mood}`);
 });
 
@@ -1040,7 +1049,10 @@ await test('_defaultFallback player_talk sets generic dialogue_topic', async () 
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const context = engine._buildContext({ type: 'player_talk' });
   const decision = engine._defaultFallback(context);
-  assert(decision.dialogue_topic === 'generic', `Expected generic topic, got ${decision.dialogue_topic}`);
+  assert(
+    decision.dialogue_topic === 'generic',
+    `Expected generic topic, got ${decision.dialogue_topic}`,
+  );
 });
 
 await test('_defaultFallback non-player-talk sets null dialogue_topic', async () => {
@@ -1164,7 +1176,10 @@ await test('ruleBasedDecision player_help with friendly NPC (lines 397-409)', as
   const decision = engine._ruleBasedDecision(context);
   assert(decision.action === 'talk', `Expected talk, got ${decision.action}`);
   assert(decision.confidence === 0.82, `Expected 0.82 confidence, got ${decision.confidence}`);
-  assert(decision.dialogue_topic === 'thanks', `Expected thanks topic, got ${decision.dialogue_topic}`);
+  assert(
+    decision.dialogue_topic === 'thanks',
+    `Expected thanks topic, got ${decision.dialogue_topic}`,
+  );
 });
 
 await test('ruleBasedDecision player_threat with enemy (lines 413-423)', async () => {
@@ -1359,7 +1374,10 @@ await test('updateState corrects to friendly when trust > 60 && fear < 30 (lines
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'talk' }, { trust_delta: 5 });
-  assert(updated.attitude === 'friendly', `Expected friendly correction (covers lines 920-921), got ${updated.attitude}`);
+  assert(
+    updated.attitude === 'friendly',
+    `Expected friendly correction (covers lines 920-921), got ${updated.attitude}`,
+  );
 });
 
 await test('updateState does not correct friendly if already friendly', async () => {
@@ -1405,7 +1423,10 @@ await test('updateState corrects to afraid when fear > 70 (lines 923-924)', asyn
   };
   const engine = new NPCDecisionEngine(campaign, 'librarian');
   const updated = engine.updateState({ action: 'intimidate' }, { fear_delta: 5 });
-  assert(updated.attitude === 'afraid', `Expected afraid correction (covers lines 923-924), got ${updated.attitude}`);
+  assert(
+    updated.attitude === 'afraid',
+    `Expected afraid correction (covers lines 923-924), got ${updated.attitude}`,
+  );
 });
 
 await test('updateState does not correct to afraid if already afraid', async () => {
@@ -1451,7 +1472,10 @@ await test('updateState does not correct to afraid if hostile', async () => {
   };
   const engine = new NPCDecisionEngine(campaign, 'enemy1');
   const updated = engine.updateState({ action: 'intimidate' }, { fear_delta: 5 });
-  assert(updated.attitude === 'hostile', `Expected hostile preserved despite high fear, got ${updated.attitude}`);
+  assert(
+    updated.attitude === 'hostile',
+    `Expected hostile preserved despite high fear, got ${updated.attitude}`,
+  );
 });
 
 await test('updateState marks NPC dead when hp <= 0 (lines 935-937)', async () => {
