@@ -27,6 +27,7 @@ const tests = [
   'state-machine.test.js',
   'combat-tracker.test.js',
   'module-parser.test.js',
+  'rule-engine-coverage.test.js',
 ];
 
 let totalPass = 0;
