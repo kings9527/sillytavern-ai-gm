@@ -99,7 +99,64 @@ test('calculateDamageBonus +2d6 branch (STR+SIZ ≥ 205)', () => {
   assert(result.formula.includes('≥ 205'), `Expected range ≥ 205, got ${result.formula}`);
 });
 
-// ─── Summary ───
+// ─── calculateDamageBonus edge cases ───
+
+test('calculateDamageBonus null stats returns empty', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.calculateDamageBonus(null);
+  assert(result.total === 0, `Expected total 0, got ${result.total}`);
+  assert(result.formula === '', `Expected empty formula, got ${result.formula}`);
+});
+
+test('calculateDamageBonus defaults STR/SIZ to 50 when missing', () => {
+  const rules = new RuleEngine('coc');
+  // No STR/SIZ → defaults to 50+50=100 → DB: 0
+  const result = rules.calculateDamageBonus({});
+  assert(result.total === 0, `Expected total 0, got ${result.total}`);
+  assert(result.formula.includes('0'), `Expected DB 0, got ${result.formula}`);
+});
+
+test('calculateDamageBonus DB -2 branch (STR+SIZ ≤ 64)', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.calculateDamageBonus({ STR: 20, SIZ: 20 }); // sum=40
+  assert(result.total === -2, `Expected -2, got ${result.total}`);
+  assert(result.formula.includes('-2'), `Expected -2 in formula, got ${result.formula}`);
+});
+
+test('calculateDamageBonus DB -1 branch (STR+SIZ 65-84)', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.calculateDamageBonus({ STR: 40, SIZ: 40 }); // sum=80
+  assert(result.total === -1, `Expected -1, got ${result.total}`);
+  assert(result.formula.includes('-1'), `Expected -1 in formula, got ${result.formula}`);
+});
+
+// ─── getMaxDiceRoll edge cases ───
+
+test('getMaxDiceRoll with number input returns number', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.getMaxDiceRoll(42);
+  assert(result === 42, `Expected 42, got ${result}`);
+});
+
+test('getMaxDiceRoll with invalid string returns 0', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.getMaxDiceRoll('not-a-dice');
+  assert(result === 0, `Expected 0, got ${result}`);
+});
+
+// ─── parseDiceExpression edge cases ───
+
+test('parseDiceExpression with number input returns number', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.parseDiceExpression(7);
+  assert(result === 7, `Expected 7, got ${result}`);
+});
+
+test('parseDiceExpression with invalid string returns 0', () => {
+  const rules = new RuleEngine('coc');
+  const result = rules.parseDiceExpression('invalid');
+  assert(result === 0, `Expected 0, got ${result}`);
+});
 console.log('\n=== Test Summary ===');
 console.log(`Total: ${passCount + failCount}`);
 console.log(`Passed: ${passCount}`);
